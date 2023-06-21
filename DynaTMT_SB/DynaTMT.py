@@ -17,12 +17,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 '''
-from scipy import stats
+# from scipy import stats
 from scipy.stats import trim_mean
 import pandas as pd
 import numpy as np
 from numpy.random import random
+import warnings
 random_float = np.random.RandomState(69)
+warnings.filterwarnings("ignore")
 
 class PD_input:
     '''Class containing functions to analyze the default peptide/PSM output from ProteomeDiscoverer. All column names are assumed
@@ -38,6 +40,12 @@ class PD_input:
         input_file1 = self.input_file
         input_file1 = input_file1[~input_file1['Master Protein Accessions'].str.contains(';',na=False)]
         input_file1 = input_file1[input_file1['Contaminant']==False]
+        try:
+            input_file1 = input_file1.dropna(subset=['Average Reporter SN'])
+            input_file1 = input_file1[input_file1['Average Reporter SN'] != 0]
+        except:
+            input_file1 = input_file1.dropna(subset=['Average Reporter S/N'])
+            input_file1 = input_file1[input_file1['Average Reporter S/N'] != 0]
         self.input_file = input_file1 
            
     def IT_adjustment(self):
@@ -66,13 +74,13 @@ class PD_input:
 
         '''
         input = self.input_file
-        print("Extraction of labelled peptides")
+        print("Extraction of heavy labelled peptides")
         modi=list([col for col in input.columns if 'Modification' in col])
         modi=modi[0]
         '''Change Modification String here'''
         Heavy_peptides=input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
-        print("Extraction Done","Extracted Peptides:", len(Heavy_peptides))
+        print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
         return Heavy_peptides
 
 
@@ -84,14 +92,14 @@ class PD_input:
 
         '''
         input = self.input_file
-        print("Extraction of labelled peptides")
+        print("Extraction of light labelled peptides")
         modi=list([col for col in input.columns if 'Modification' in col])
         modi=modi[0]
         
         
         light_peptides=input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
-        print("Extraction Done","Extracted Peptides:", len(light_peptides))
+        print("Extraction Done","Extracted Light Peptides:", len(light_peptides))
         return light_peptides
 
     def baseline_correction(self,input,threshold=5,i_baseline=0,method='sum'):
@@ -213,26 +221,23 @@ class PD_input:
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-
-
-
     def total_intensity_normalisation(self):
         '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
         '''
-        input = self.input_file
-        channels=[col for col in input.columns if 'Abundance:' in col]
-        if channels == []:
-            channels = [col for col in input.columns if 'Abundance' in col]
-        input=input.dropna(subset=channels)
+        input_df = self.input_file.copy(deep=True)
+        channels = [col for col in input_df.columns if 'Abundance:' in col]
+        if not channels:
+            channels = [col for col in input_df.columns if 'Abundance' in col]
+        input_df = input_df.dropna(subset=channels)
         print("Normalization")
-        minimum=np.argmin(input[channels].sum().values)
-        summed=np.array(input[channels].sum().values)
-        minimum=summed[minimum]
-        norm_factors=summed/minimum
-        input[channels]=input[channels].divide(norm_factors, axis=1)
+        minimum = np.argmin(input_df[channels].sum().values)
+        summed = np.array(input_df[channels].sum().values)
+        minimum = summed[minimum]
+        norm_factors = summed / minimum
+        input_df.loc[:, channels] = input_df[channels].divide(norm_factors, axis=1)
         print("Normalization done")
-        self.input_file = input
+        self.input_file = input_df
 
     def Median_normalisation(self):
         '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
@@ -285,15 +290,9 @@ class PD_input:
                 result[group] = medians
                 sums=temp[channels].sum()
                 result[group]=sums
-        
 
-            
-        
         protein_df=pd.DataFrame.from_dict(result, orient='index',columns=channels)
-        
-        
         return protein_df
-
 
     def sum_peptides_for_proteins(self,input_file):
         '''This function takes a peptide/PSM level DataFrame stored in self.input_file and performs Protein quantification rollup based
@@ -386,13 +385,13 @@ class plain_text_input:
 
         '''
         input = self.input_file
-        print("Extraction of labelled peptides")
+        print("Extraction of heavy labelled peptides")
         modi=self.modifications
         
         
         Heavy_peptides=input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
-        print("Extraction Done","Extracted Peptides:", len(Heavy_peptides))
+        print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
         return Heavy_peptides
 
 
@@ -403,13 +402,13 @@ class plain_text_input:
         Returns light peptide DF
         '''
         input = self.input_file
-        print("Extraction of labelled peptides")
+        print("Extraction of light labelled peptides")
         modi=self.modifications
         
         
         light_peptides=input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
-        print("Extraction Done","Extracted Peptides:", len(light_peptides))
+        print("Extraction Done","Extracted Heavy Peptides:", len(light_peptides))
         
         return light_peptides
 
@@ -482,23 +481,24 @@ class plain_text_input:
         norm_factors=summed/minimum
         input[channels]=input[channels].divide(norm_factors, axis=1)
         self.input_file = input
-        
-    
+
     def total_intensity_normalisation(self):
         '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
         '''
-        input = self.input_file
-        channels=self.abundances
-        input=input.dropna(subset=channels)
+        input_df = self.input_file.copy(deep=True)
+        channels = [col for col in input_df.columns if 'Abundance:' in col]
+        if not channels:
+            channels = [col for col in input_df.columns if 'Abundance' in col]
+        input_df = input_df.dropna(subset=channels)
         print("Normalization")
-        minimum=np.argmin(input[channels].sum().values)
-        summed=np.array(input[channels].sum().values)
-        minimum=summed[minimum]
-        norm_factors=summed/minimum
-        input[channels]=input[channels].divide(norm_factors, axis=1)
+        minimum = np.argmin(input_df[channels].sum().values)
+        summed = np.array(input_df[channels].sum().values)
+        minimum = summed[minimum]
+        norm_factors = summed / minimum
+        input_df.loc[:, channels] = input_df[channels].divide(norm_factors, axis=1)
         print("Normalization done")
-        self.input_file = input
+        self.input_file = input_df
 
     def Median_normalisation(self):
         '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
