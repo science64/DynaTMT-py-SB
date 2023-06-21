@@ -1,0 +1,6 @@
+__author__ = 'Kevin Klann'
+__updated_by__ = 'Süleyman Bozkurt'
+__version__ = '2.0'
+__updated_date__ = '2023-06-21'
+__description__ = 'Exactly the same what DynaTMT is doing, just some updates and fixes.'
+__license__ = 'MIT'
