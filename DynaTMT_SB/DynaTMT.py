@@ -43,7 +43,7 @@ class PD_input:
         '''Initialises PD_input class with specified input file. The input file gets stored
         in the class variable self.input_file.
         '''
-        self.input_file = input # this has been changed
+        self.input_file = input # this has been changed, we are not using it anymore!
 
     def log_func(func):  # to show (log) what function is under usage!
         def wrapper(self, *args, **kwargs):
