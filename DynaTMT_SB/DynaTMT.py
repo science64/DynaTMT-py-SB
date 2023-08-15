@@ -17,6 +17,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 '''
+
+__author__ = "Kevin Klann - Süleyman Bozkurt"
+__version__ = "v2.2"
+__maintainer__ = "Süleyman Bozkurt"
+__email__ = "sbozkurt.mbg@gmail.com"
+__date__ = '18.01.2021'
+__update__ = '16.08.2023'
+
 # from scipy import stats
 from scipy.stats import trim_mean
 import pandas as pd
@@ -35,26 +43,34 @@ class PD_input:
         '''Initialises PD_input class with specified input file. The input file gets stored
         in the class variable self.input_file.
         '''
-        self.input_file = input
-    def filter_peptides(self):
-        input_file1 = self.input_file
-        input_file1 = input_file1[~input_file1['Master Protein Accessions'].str.contains(';',na=False)]
-        input_file1 = input_file1[input_file1['Contaminant']==False]
+        self.input_file = input # this has been changed
+
+    def log_func(func):  # to show (log) what function is under usage!
+        def wrapper(self, *args, **kwargs):
+            print(f"Calling function: {func.__name__}")
+            return func(self, *args, **kwargs)
+        return wrapper
+
+    @log_func
+    def filter_peptides(self, filtered_input):
+        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
+        filtered_input = filtered_input[filtered_input['Contaminant']==False]
         try:
-            input_file1 = input_file1.dropna(subset=['Average Reporter SN'])
-            input_file1 = input_file1[input_file1['Average Reporter SN'] != 0]
+            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
+            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
         except:
-            input_file1 = input_file1.dropna(subset=['Average Reporter S/N'])
-            input_file1 = input_file1[input_file1['Average Reporter S/N'] != 0]
-        self.input_file = input_file1 
-           
-    def IT_adjustment(self):
+            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
+            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
+
+        print("Filtering done!")
+        return filtered_input
+
+    @log_func
+    def IT_adjustment(self, input):
         '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
         Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
         default output. For other column headers please refer to plain_text_input class.
         '''
-        input = self.input_file
-        print("IT adjustment")
         channels = [col for col in input.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input.columns if 'Abundance' in col]
@@ -62,19 +78,16 @@ class PD_input:
         inject_times=input[IT[0]]
         input[channels]=input[channels].divide(inject_times,axis=0)
         input[channels]=input[channels].multiply(1000)
-        print("Done")
-        self.input_file = input
-        
+        print("IT adjustment done!")
+        return input
 
-    def extract_heavy (self):
+    @log_func
+    def extract_heavy (self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all heavy labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
-
         Returns heavy peptide DF
-
         '''
-        input = self.input_file
-        print("Extraction of heavy labelled peptides")
+        # print("Extraction of heavy labelled peptides")
         modi=list([col for col in input.columns if 'Modification' in col])
         modi=modi[0]
         '''Change Modification String here'''
@@ -83,26 +96,23 @@ class PD_input:
         print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
         return Heavy_peptides
 
-
-    def extract_light (self):
+    @log_func
+    def extract_light (self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all light labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
-
         Returns light peptide DF
-
         '''
-        input = self.input_file
-        print("Extraction of light labelled peptides")
+        # print("Extraction of light labelled peptides")
         modi=list([col for col in input.columns if 'Modification' in col])
         modi=modi[0]
-        
-        
+
         light_peptides=input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
         print("Extraction Done","Extracted Light Peptides:", len(light_peptides))
         return light_peptides
 
-    def baseline_correction(self,input,threshold=5,i_baseline=0,method='sum'):
+    @log_func
+    def baseline_correction(self, input, threshold=5, i_baseline=0, method='sum'):
         '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
         baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
 
@@ -114,8 +124,7 @@ class PD_input:
 
         Modifies self.input_file variable and returns a pandas df.
         '''
-        
-        print("Baseline correction")
+        # print("Baseline correction")
         channels=[col for col in input.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input.columns if 'Abundance' in col]
@@ -129,12 +138,9 @@ class PD_input:
             baseline_channel=channels[i_baseline]
             baseline=temp_data[baseline_channel]
 
-
-
             temp_data[channels]=temp_data[channels].subtract(baseline,axis='index')
             temp_data['Mean']=temp_data[channels].mean(axis=1)
-            
-            
+
             temp_data[temp_data < 0]=0 # replace negative abundances with 0
             temp_data=temp_data.loc[temp_data['Mean'] > threshold] # set S/N threshold for each PSM
             if method == 'sum':
@@ -142,30 +148,29 @@ class PD_input:
                 temp_data=temp_data[channels].sum()
                 
             elif method == 'mean':
-                
                 temp_data=temp_data[channels].mean()
             elif method == 'median':
-                
                 temp_data=temp_data[channels].median()
             else:
-                
                 temp_data=temp_data[channels].sum()
 
             results[group]=temp_data
-        print("Baseline correction done")
+
+        print("Baseline correction done!")
         result_df=pd.DataFrame.from_dict(results, orient='index',columns=channels)
         self.input_file = result_df
         return result_df
 
-    def baseline_correction_peptide_return(self,input_file,threshold=5,i_baseline=0,random=False,include_negatives=False):#TODO Make available for together analyzed data
-        print("Baseline correction")
+    @log_func
+    def baseline_correction_peptide_return(self, input_file, threshold=5, i_baseline=0, random=False, include_negatives=False):
+
         channels=[col for col in input_file.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input_file.columns if 'Abundance' in col]
         MPA = [col for col in input_file.columns if 'Master Protein Accessions' in col]
-        print(MPA)
+
         MPA = MPA[0]
-        print(MPA)
+
         temp_data = input_file[channels]
         baseline_channel=channels[i_baseline]
         baseline=temp_data[baseline_channel]
@@ -188,6 +193,7 @@ class PD_input:
         input_file[channels]=temp_data[channels]
         return input_file
 
+    @log_func
     def statistics(self, input):
         '''This function provides summary statistics for quality control assessment from Proteome Discoverer Output.
         '''
@@ -197,11 +203,11 @@ class PD_input:
         print(input[numeric_without_tmt_channels].describe(include=[np.number]))
         return(input[numeric_without_tmt_channels].describe(include=[np.number]))
 
-    def TMM(self):
+    @log_func
+    def TMM(self, input):
         '''This function implements TMM normalisation (Robinson & Oshlack, 2010, Genome Biology). It modifies the self.input_file class
         variable.
         '''
-        input = self.input_file
         channels=[col for col in input.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input.columns if 'Abundance' in col]
@@ -214,50 +220,50 @@ class PD_input:
         minimum=summed[tm]
         norm_factors=summed/minimum
         input[channels]=input[channels].divide(norm_factors, axis=1)
-        self.input_file = input
-        
+        return input
+
+    @log_func
     def chunks(self,l, n):
         """Yield successive n-sized chunks from l."""
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    def total_intensity_normalisation(self):
+    @log_func
+    def total_intensity_normalisation(self, input):
         '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
         '''
-        input_df = self.input_file.copy(deep=True)
+        input_df = input.copy(deep=True)
         channels = [col for col in input_df.columns if 'Abundance:' in col]
         if not channels:
             channels = [col for col in input_df.columns if 'Abundance' in col]
         input_df = input_df.dropna(subset=channels)
-        print("Normalization")
         minimum = np.argmin(input_df[channels].sum().values)
         summed = np.array(input_df[channels].sum().values)
         minimum = summed[minimum]
         norm_factors = summed / minimum
         input_df.loc[:, channels] = input_df[channels].divide(norm_factors, axis=1)
-        print("Normalization done")
-        self.input_file = input_df
+        print("Total intensity normalisation done!")
+        return input_df
 
-    def Median_normalisation(self):
+    def Median_normalisation(self, input):
         '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
-        '''    
-        input = self.input_file
+        '''
         channels=[col for col in input.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input.columns if 'Abundance' in col]
         input=input.dropna(subset=channels)
-        print("Normalization")
         minimum=np.argmin(input[channels].median().values)
         summed=np.array(input[channels].median().values)
         minimum=summed[minimum]
         norm_factors=summed/minimum
         input[channels]=input[channels].divide(norm_factors, axis=1)
-        print("Normalization done")
-        self.input_file = input
+        print("Median normalisation done!")
+        return input
 
-    def protein_rollup(self,input_file,method='sum'):
+    @log_func
+    def protein_rollup(self, input_file, method='sum'):
         channels = [col for col in input_file.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input_file.columns if 'Abundance' in col]
@@ -292,15 +298,17 @@ class PD_input:
                 result[group]=sums
 
         protein_df=pd.DataFrame.from_dict(result, orient='index',columns=channels)
+        print("Protein rollup done!")
         return protein_df
 
-    def sum_peptides_for_proteins(self,input_file):
+    @log_func
+    def sum_peptides_for_proteins(self, input_file):
         '''This function takes a peptide/PSM level DataFrame stored in self.input_file and performs Protein quantification rollup based
         on the sum of all corresponding peptides.
 
         Returns a Protein level DataFrame and modifies self.input_file
         '''
-        print('Calculate Protein quantifications from PSM')
+        print('Calculate Protein quantifications from PSM!')
         
         channels = [col for col in input_file.columns if 'Abundance:' in col]
         if channels == []:
@@ -315,21 +323,21 @@ class PD_input:
             result[group]=sums
         
         protein_df=pd.DataFrame.from_dict(result, orient='index',columns=channels)
-        print("Combination done")
+        print("Protein rollup done!")
         return protein_df[channels]
 
-
-    def log2(self):
+    @log_func
+    def log2(self, input):
         '''Modifies self.input_file and log2 transforms all TMT intensities.
         '''
-        input = self.input_file
         channels=[col for col in input.columns if 'Abundance:' in col]
         if channels == []:
             channels = [col for col in input.columns if 'Abundance' in col]
         input[channels]=np.log2(input[channels])
         print("Normalization done")
-        self.input_file = input
-    
+        return input
+
+    @log_func
     def return_file(self):
         return self.input_file
 
@@ -360,13 +368,18 @@ class plain_text_input:
             self.abundances = self.input_columns[2:]
             self.modifications = self.input_columns[1]
             self.mpa = self.input_columns[0]
-            
 
-    def IT_adjustment(self):
+    def log_func(func):  # to show (log) what function is under usage!
+        def wrapper(self, *args, **kwargs):
+            print(f"Calling function: {func.__name__}")
+            return func(self, *args, **kwargs)
+        return wrapper
+
+    @log_func
+    def IT_adjustment(self, input):
         '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
         
         '''
-        input = self.input_file
         print("IT adjustment")
         channels = self.abundances
         IT=self.it_col
@@ -374,45 +387,42 @@ class plain_text_input:
         input[channels]=input[channels].divide(inject_times,axis=0)
         input[channels]=input[channels].multiply(1000)
         print("Done")
-        self.input_file = input
-        
+        return input
 
-    def extract_heavy (self):
+    @log_func
+    def extract_heavy (self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all heavy labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
-
         Returns heavy peptide DF
-
         '''
-        input = self.input_file
+
         print("Extraction of heavy labelled peptides")
         modi=self.modifications
-        
-        
+
         Heavy_peptides=input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
         print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
         return Heavy_peptides
 
-
-    def extract_light (self):
+    @log_func
+    def extract_light (self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all light labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
 
         Returns light peptide DF
         '''
-        input = self.input_file
+
         print("Extraction of light labelled peptides")
         modi=self.modifications
-        
-        
+
         light_peptides=input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
 
         print("Extraction Done","Extracted Heavy Peptides:", len(light_peptides))
         
         return light_peptides
 
-    def baseline_correction(self,input,threshold=5,i_baseline=0,method='sum'):
+    @log_func
+    def baseline_correction(self, input, threshold=5, i_baseline=0, method='sum'):
         '''This function takes the self.input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
         baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
 
@@ -437,26 +447,18 @@ class plain_text_input:
             baseline_channel=channels[i_baseline]
             baseline=temp_data[baseline_channel]
 
-
-
             temp_data[channels]=temp_data[channels].subtract(baseline,axis='index')
             temp_data['Mean']=temp_data[channels].mean(axis=1)
-            
-            
+
             temp_data[temp_data < 0]=0 # replace negative abundances with 0
             temp_data=temp_data.loc[temp_data['Mean'] > threshold] # set S/N threshold for each PSM
             if method == 'sum':
-                
                 temp_data=temp_data[channels].sum()
-                
             elif method == 'mean':
-                
                 temp_data=temp_data[channels].mean()
             elif method == 'median':
-                
                 temp_data=temp_data[channels].median()
             else:
-                
                 temp_data=temp_data[channels].sum()
 
             results[group]=temp_data
@@ -465,11 +467,11 @@ class plain_text_input:
         self.input_file = result_df
         return result_df
 
-    def TMM(self):
+    @log_func
+    def TMM(self, input):
         '''This function implements TMM normalisation (Robinson & Oshlack, 2010, Genome Biology). It modifies the self.input_file class
         variable.
         '''
-        input = self.input_file
         channels=self.abundances
         input=input.dropna(subset=channels)
         input_trim=input[input[channels] < input[channels].quantile(.95)]
@@ -480,13 +482,14 @@ class plain_text_input:
         minimum=summed[tm]
         norm_factors=summed/minimum
         input[channels]=input[channels].divide(norm_factors, axis=1)
-        self.input_file = input
+        return input
 
-    def total_intensity_normalisation(self):
+    @log_func
+    def total_intensity_normalisation(self, input):
         '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
         '''
-        input_df = self.input_file.copy(deep=True)
+        input_df = input.copy(deep=True)
         channels = [col for col in input_df.columns if 'Abundance:' in col]
         if not channels:
             channels = [col for col in input_df.columns if 'Abundance' in col]
@@ -498,13 +501,13 @@ class plain_text_input:
         norm_factors = summed / minimum
         input_df.loc[:, channels] = input_df[channels].divide(norm_factors, axis=1)
         print("Normalization done")
-        self.input_file = input_df
+        return input_df
 
-    def Median_normalisation(self):
+    @log_func
+    def Median_normalisation(self, input):
         '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
-        '''    
-        input = self.input_file
+        '''
         channels=self.abundances
         input=input.dropna(subset=channels)
         print("Normalization")
@@ -514,9 +517,10 @@ class plain_text_input:
         norm_factors=summed/minimum
         input[channels]=input[channels].divide(norm_factors, axis=1)
         print("Normalization done")
-        self.input_file = input
+        return input
 
-    def protein_rollup(self,input_file,method='sum'):
+    @log_func
+    def protein_rollup(self, input_file, method='sum'):
         channels = self.abundances
         MPA = self.mpa
         PSM_grouped=input_file.groupby(by=[MPA])
@@ -546,23 +550,18 @@ class plain_text_input:
                 result[group] = medians
                 sums=temp[channels].sum()
                 result[group]=sums
-        
 
-            
-        
         protein_df=pd.DataFrame.from_dict(result, orient='index',columns=channels)
-        
-        
+
         return protein_df
 
-
-    def sum_peptides_for_proteins(self,input):
+    @log_func
+    def sum_peptides_for_proteins(self, input):
         '''This function takes a peptide/PSM level DataFrame stored in self.input_file and performs Protein quantification rollup based
         on the sum of all corresponding peptides.
 
         Returns a Protein level DataFrame and modifies self.input_file
         '''
-        
         print('Calculate Protein quantifications from PSM')
         channels = self.abundances
         MPA=self.mpa
@@ -578,14 +577,14 @@ class plain_text_input:
         print("Combination done")
         return protein_df[channels]
 
-    def baseline_correction_peptide_return(self,input_file,threshold=5,i_baseline=0,random=False, include_negatives=False):#TODO Make available for together analyzed data
+    @log_func
+    def baseline_correction_peptide_return(self, input_file, threshold=5, i_baseline=0, random=False, include_negatives=False):
         print("Baseline correction")
         channels=self.abundances
         MPA = self.mpa
         protein_groups=input_file.groupby(by=[MPA],sort=False)
         results={}
-    
-        
+
         temp_data = input_file[channels]
         baseline_channel=channels[i_baseline]
         baseline=temp_data[baseline_channel]
@@ -604,6 +603,7 @@ class plain_text_input:
         temp_data=temp_data.loc[temp_data['Mean'] > threshold] # set S/N threshold for each PSM
         input_file[channels]=temp_data[channels]
         return input_file
-        
+
+    @log_func
     def return_file(self):
         return self.input_file
