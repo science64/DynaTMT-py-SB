@@ -247,6 +247,7 @@ class PD_input:
         print("Total intensity normalisation done!")
         return input_df
 
+    @log_func
     def Median_normalisation(self, input):
         '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
         to the updated DataFrame containing the normalized values.
