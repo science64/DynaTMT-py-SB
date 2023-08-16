@@ -39,11 +39,12 @@ class PD_input:
     to be default PD output. If your column names do not match these assumed strings, you can modify them or use the plain_text_input
     class, that uses column order instead of names.
     '''
-    def __init__(self, input):
+    def __init__(self):
         '''Initialises PD_input class with specified input file. The input file gets stored
         in the class variable self.input_file.
         '''
-        self.input_file = input # this has been changed, we are not using it anymore!
+        # self.input_file = input # this has been changed, we are not using it anymore!
+        pass
 
     def log_func(func):  # to show (log) what function is under usage!
         def wrapper(self, *args, **kwargs):
