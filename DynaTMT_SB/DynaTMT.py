@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.2"
+__version__ = "v2.3"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '16.08.2023'
+__update__ = '30.09.2023'
 
 # from scipy import stats
 from scipy.stats import trim_mean
