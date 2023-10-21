@@ -19,7 +19,7 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.4"
+__version__ = "v2.5"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
@@ -66,8 +66,17 @@ class PD_input:
         inject_times=input[IT[0]]
         input[self.channels]=input[self.channels].divide(inject_times,axis=0)
         input[self.channels]=input[self.channels].multiply(1000)
-        print("IT adjustment done!")
-        return input
+
+        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
+        # the aim is to convert PSMs into peptide file.
+        peptide = (
+            input.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
+                .agg('sum')
+                .reset_index()
+        )
+
+        print("IT adjustment and PSMs to peptides done!")
+        return peptide
 
     @log_func
     def filter_peptides(self, filtered_input):
@@ -121,15 +130,7 @@ class PD_input:
         random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
 
         # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
-        PSMs = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
-
-        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
-        # the aim is to convert PSMs into peptide file.
-        peptide = (
-            PSMs.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
-                .agg('sum')
-                .reset_index()
-        )
+        peptide = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
 
         baseline_channel = self.channels[i_baseline]
         baseline = peptide[baseline_channel]

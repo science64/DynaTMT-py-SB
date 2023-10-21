@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="DynaTMT-py-SB", 
-    version="2.4",
+    version="2.5",
     author="Kevin Klann",
     author_email="klann@em.uni-frankfurt.de",
     # Updated by = "Süleyman Bozkurt",
@@ -20,5 +20,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.8',
 )
