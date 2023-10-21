@@ -13,6 +13,11 @@ The **DynaTMT tool** can be used to analyze **m**ultiplexed **e**nhanced **pro**
     Additionally, mePROD utilizes a baseline channel, comprised of a non-SILAC labelled digest that serves as a proxy for isolation interference and greatly improves quantification dynamic range. Quantification values of a heavy labelled peptide in that baseline channel are derived from co-fragmented heavy peptides and will be subtracted from the other quantifications. 
     For more information on mePROD, please refer to the [original publication](https://doi.org/10.1016/j.molcel.2019.11.010) Klann et al. 2020. 
 The package can also be used to analyse any pSILAC/TMT dataset. 
+
+## Version
+
+    Current version: 2.4.0 (2023-10-22)
+
 ## Install
 
     pip install DynaTMT-py
