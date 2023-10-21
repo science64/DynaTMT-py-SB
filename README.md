@@ -19,8 +19,9 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     Current version: 2.4.0 (2023-10-22)
 
 ## Install
+    (you need to have git installed)
 
-    pip install DynaTMT-py
+    pip install --upgrade git+https://github.com/science64/DynaTMT-py-SB.git 
 
 ## Usage
 
