@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.5"
+__version__ = "v2.6.1"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '22.10.2023'
+__update__ = '23.10.2023'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -55,6 +55,29 @@ class PD_input:
             return func(self, *args, **kwargs)
         return wrapper
 
+    # @log_func
+    # def IT_adjustment(self, input):
+    #     '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
+    #     Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
+    #     default output. For other column headers please refer to plain_text_input class.
+    #     '''
+    #     self.get_channels(input)
+    #     IT=[col for col in input.columns if 'Ion Inject Time' in col]
+    #     inject_times=input[IT[0]]
+    #     input[self.channels]=input[self.channels].divide(inject_times,axis=0)
+    #     input[self.channels]=input[self.channels].multiply(1000)
+    #
+    #     # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
+    #     # the aim is to convert PSMs into peptide file.
+    #     peptide = (
+    #         input.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
+    #             .agg('sum')
+    #             .reset_index()
+    #     )
+    #
+    #     print("IT adjustment and PSMs to peptides done!")
+    #     return peptide
+
     @log_func
     def IT_adjustment(self, input):
         '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
@@ -67,16 +90,8 @@ class PD_input:
         input[self.channels]=input[self.channels].divide(inject_times,axis=0)
         input[self.channels]=input[self.channels].multiply(1000)
 
-        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
-        # the aim is to convert PSMs into peptide file.
-        peptide = (
-            input.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
-                .agg('sum')
-                .reset_index()
-        )
-
-        print("IT adjustment and PSMs to peptides done!")
-        return peptide
+        print("IT adjustment done!")
+        return input
 
     @log_func
     def filter_peptides(self, filtered_input):
@@ -115,6 +130,46 @@ class PD_input:
         print("Extraction Done","Extracted Light Peptides:", len(light_peptides))
         return light_peptides
 
+    # @log_func
+    # def baseline_correction(self, input_file, random=True, threshold=5, i_baseline=0, include_negatives=False):
+    #     '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
+    #     baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
+    #
+    #     Threshold: After baseline substraction the remaining average signal has to be above threshold to be included. Parameter is set with threshold=X.
+    #     This prevents very low remaining signal peptides to produce artificially high fold changes. Has to be determined empirically.
+    #
+    #     First PSMs combined into peptides by 'Master Protein Accessions', 'Annotated Sequence', 'Modifications' and then baseline correction done, export
+    #     peptide file
+    #     '''
+    #
+    #     random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
+    #
+    #     # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
+    #     peptide = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
+    #
+    #     baseline_channel = self.channels[i_baseline]
+    #     baseline = peptide[baseline_channel]
+    #     peptide[self.channels] = peptide[self.channels].subtract(baseline, axis='index')
+    #     peptide['Mean'] = peptide[self.channels].mean(axis=1)
+    #
+    #     # !!!!! this part might change !!!!
+    #     peptide = peptide.loc[peptide['Mean'] >= threshold]  # set S/N threshold for each PSM
+    #     peptide = peptide.drop("Mean", axis=1)
+    #
+    #     if (include_negatives == False and random == False):
+    #         peptide[peptide < 0] = 0  # replace negative abundances with 0
+    #
+    #     elif (include_negatives == False and random == True):
+    #         for channel in self.channels:
+    #             peptide[channel] = np.where(peptide[channel] < 0, random_float.random_sample(size=len(peptide)),
+    #                                         peptide[channel])
+    #     else:  # for other conditions we are not doing anything.
+    #         pass
+    #
+    #     # !!!! Until this part !!!!
+    #
+    #     return peptide
+
     @log_func
     def baseline_correction(self, input_file, random=True, threshold=5, i_baseline=0, include_negatives=False):
         '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
@@ -130,7 +185,15 @@ class PD_input:
         random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
 
         # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
-        peptide = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
+        PSMs = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
+
+        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
+        # the aim is to convert PSMs into peptide file.
+        peptide = (
+            PSMs.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
+                .agg('sum')
+                .reset_index()
+        )
 
         baseline_channel = self.channels[i_baseline]
         baseline = peptide[baseline_channel]
