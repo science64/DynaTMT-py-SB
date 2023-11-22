@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.6.1"
+__version__ = "v2.6.12"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '23.10.2023'
+__update__ = '22.11.2023'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -37,17 +37,18 @@ class PD_input:
     to be default PD output. If your column names do not match these assumed strings, you can modify them or use the plain_text_input
     class, that uses column order instead of names.
     '''
-    def __init__(self):
+    def __init__(self, input):
         '''Initialises PD_input class with specified input file. The input file gets stored
         in the class variable self.input_file.
         '''
         # self.input_file = input # this has been changed, we are not using it anymore!
-        pass
+        self.channels = self.get_channels(input)
 
     def get_channels(self, input):
-        self.channels = [col for col in input.columns if 'Abundance:' in col]
-        if self.channels == []:
-            self.channels = [col for col in input.columns if 'Abundance' in col]
+        channels = [col for col in input.columns if 'Abundance:' in col]
+        if channels == []:
+            channels = [col for col in input.columns if 'Abundance' in col]
+        return channels
 
     def log_func(func):  # to show (log) what function is under usage!
         def wrapper(self, *args, **kwargs):
@@ -55,36 +56,12 @@ class PD_input:
             return func(self, *args, **kwargs)
         return wrapper
 
-    # @log_func
-    # def IT_adjustment(self, input):
-    #     '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
-    #     Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
-    #     default output. For other column headers please refer to plain_text_input class.
-    #     '''
-    #     self.get_channels(input)
-    #     IT=[col for col in input.columns if 'Ion Inject Time' in col]
-    #     inject_times=input[IT[0]]
-    #     input[self.channels]=input[self.channels].divide(inject_times,axis=0)
-    #     input[self.channels]=input[self.channels].multiply(1000)
-    #
-    #     # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
-    #     # the aim is to convert PSMs into peptide file.
-    #     peptide = (
-    #         input.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
-    #             .agg('sum')
-    #             .reset_index()
-    #     )
-    #
-    #     print("IT adjustment and PSMs to peptides done!")
-    #     return peptide
-
     @log_func
     def IT_adjustment(self, input):
         '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
         Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
         default output. For other column headers please refer to plain_text_input class.
         '''
-        self.get_channels(input)
         IT=[col for col in input.columns if 'Ion Inject Time' in col]
         inject_times=input[IT[0]]
         input[self.channels]=input[self.channels].divide(inject_times,axis=0)
@@ -113,10 +90,11 @@ class PD_input:
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
         Returns heavy peptide DF
         '''
-        modi=list([col for col in input.columns if 'Modification' in col])[0]
+        modi = list([col for col in input.columns if 'Modification' in col])[0]
         '''Change Modification String here'''
-        Heavy_peptides=input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6',na=False)]
+        Heavy_peptides = input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6', na=False)]
         print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
+
         return Heavy_peptides
 
     @log_func
@@ -125,8 +103,8 @@ class PD_input:
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
         Returns light peptide DF
         '''
-        modi=list([col for col in input.columns if 'Modification' in col])[0]
-        light_peptides=input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
+        modi = list([col for col in input.columns if 'Modification' in col])[0]
+        light_peptides = input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
         print("Extraction Done","Extracted Light Peptides:", len(light_peptides))
         return light_peptides
 

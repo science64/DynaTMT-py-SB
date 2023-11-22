@@ -6,8 +6,6 @@
 
 **To use it in your python code: Use "from DynaTMT_SB.DynaTMT import PD_input,plain_text_input" instead of "from DynaTMT.DynaTMT import PD_input,plain_text_input"**
 
-**Rest is still applicable.**
-
 The **DynaTMT tool** can be used to analyze **m**ultiplexed **e**nhanced **pro**tein **d**ynamic mass spectrometry (**mePROD**) data. mePROD uses pulse SILAC combined with Tandem Mass Tag (TMT) labelling to profile newly synthesized proteins. Through a booster channel, that contains a fully heavy labelled digest, the identification rate of labelled peptides is greatly enhanced, compared to other pSILAC experiments. Through the multiplexing capacity of TMT reagents it is possible during the workflow to use the boost signal as a carrier that improves survey scan intensities, but does not interfere with quantification of the pulsed samples. This workflow makes labelling times of minutes (down to 15min in the original publication) possible.
 Additionally, mePROD utilizes a baseline channel, comprised of a non-SILAC labelled digest that serves as a proxy for isolation interference and greatly improves quantification dynamic range. Quantification values of a heavy labelled peptide in that baseline channel are derived from co-fragmented heavy peptides and will be subtracted from the other quantifications.
 For more information on mePROD, please refer to the [original publication](https://doi.org/10.1016/j.molcel.2019.11.010) Klann et al. 2020.
@@ -15,7 +13,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.6.1 (2023-10-23)
+    Current version: 2.6.2 (2023-11-22)
 
 ## Install
 
