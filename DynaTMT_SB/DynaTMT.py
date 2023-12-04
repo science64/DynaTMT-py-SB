@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.6.12"
+__version__ = "v2.7.0"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '22.11.2023'
+__update__ = '05.12.2023'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -57,6 +57,30 @@ class PD_input:
         return wrapper
 
     @log_func
+    def filter_peptides(self, filtered_input):
+        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
+        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
+
+        # this part removes the peptides with 0 signal/noise ratio (meaning that all the channels are 0)
+        try:
+            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
+            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
+        except:
+            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
+            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
+
+        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0 but Average Reporter SN is not 0
+        # Calculate the row-wise sum for the specified columns
+        row_sums = filtered_input[self.channels].sum(axis=1)
+        # Filter out rows where the sum is zero
+        filtered_input = filtered_input[row_sums != 0]
+
+        # this part replace NaN values with 0
+        filtered_input.fillna(0, inplace=True)
+
+        return filtered_input
+
+    @log_func
     def IT_adjustment(self, input):
         '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
         Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
@@ -71,18 +95,49 @@ class PD_input:
         return input
 
     @log_func
-    def filter_peptides(self, filtered_input):
-        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
-        filtered_input = filtered_input[filtered_input['Contaminant']==False]
-        try:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
-            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
-        except:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
-            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
+    def total_intensity_normalisation(self, input):
+        '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
+        to the updated DataFrame containing the normalized values.
+        '''
+        input_df = input.copy(deep=True)
+        input_df = input_df.dropna(subset=self.channels)
+        minimum = np.argmin(input_df[self.channels].sum().values)
+        summed = np.array(input_df[self.channels].sum().values)
+        minimum = summed[minimum]
+        norm_factors = summed / minimum
+        input_df.loc[:, self.channels] = input_df[self.channels].divide(norm_factors, axis=1)
+        print("Total intensity normalisation done!")
+        return input_df
 
-        print("Filtering done!")
-        return filtered_input
+    @log_func
+    def Median_normalisation(self, input):
+        '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
+        to the updated DataFrame containing the normalized values.
+        '''
+        input=input.dropna(subset=self.channels)
+        minimum=np.argmin(input[self.channels].median().values)
+        summed=np.array(input[self.channels].median().values)
+        minimum=summed[minimum]
+        norm_factors=summed/minimum
+        input[self.channels]=input[self.channels].divide(norm_factors, axis=1)
+        print("Median normalisation done!")
+        return input
+
+    @log_func
+    def TMM(self, input):
+        '''This function implements TMM normalisation (Robinson & Oshlack, 2010, Genome Biology). It modifies the self.input_file class
+        variable.
+        '''
+        input=input.dropna(subset=self.channels)
+        input_trim=input[input[self.channels] < input[self.channels].quantile(.95)]
+        print("Normalization")
+        input_trim[self.channels]=input_trim[self.channels].divide(input_trim[self.channels[0]],axis=0)
+        tm=np.argmin(trim_mean(input_trim[self.channels],0.25))
+        summed=np.array(trim_mean(input_trim[self.channels], 0.25))
+        minimum=summed[tm]
+        norm_factors=summed/minimum
+        input[self.channels]=input[self.channels].divide(norm_factors, axis=1)
+        return input
 
     @log_func
     def extract_heavy (self, input):
@@ -197,63 +252,6 @@ class PD_input:
         return peptide
 
     @log_func
-    def statistics(self, input):
-        '''This function provides summary statistics for quality control assessment from Proteome Discoverer Output.
-        '''
-        return(input[self.channels].describe(include=[np.number]))
-
-    @log_func
-    def TMM(self, input):
-        '''This function implements TMM normalisation (Robinson & Oshlack, 2010, Genome Biology). It modifies the self.input_file class
-        variable.
-        '''
-        input=input.dropna(subset=self.channels)
-        input_trim=input[input[self.channels] < input[self.channels].quantile(.95)]
-        print("Normalization")
-        input_trim[self.channels]=input_trim[self.channels].divide(input_trim[self.channels[0]],axis=0)
-        tm=np.argmin(trim_mean(input_trim[self.channels],0.25))
-        summed=np.array(trim_mean(input_trim[self.channels], 0.25))
-        minimum=summed[tm]
-        norm_factors=summed/minimum
-        input[self.channels]=input[self.channels].divide(norm_factors, axis=1)
-        return input
-
-    @log_func
-    def chunks(self,l, n):
-        """Yield successive n-sized chunks from l."""
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
-    @log_func
-    def total_intensity_normalisation(self, input):
-        '''This function normalizes the self.input_file variable to the summed intensity of all TMT channels. It modifies the self.input_file
-        to the updated DataFrame containing the normalized values.
-        '''
-        input_df = input.copy(deep=True)
-        input_df = input_df.dropna(subset=self.channels)
-        minimum = np.argmin(input_df[self.channels].sum().values)
-        summed = np.array(input_df[self.channels].sum().values)
-        minimum = summed[minimum]
-        norm_factors = summed / minimum
-        input_df.loc[:, self.channels] = input_df[self.channels].divide(norm_factors, axis=1)
-        print("Total intensity normalisation done!")
-        return input_df
-
-    @log_func
-    def Median_normalisation(self, input):
-        '''This function normalizes the self.input_file variable to the median of all individual TMT channels. It modifies the self.input_file
-        to the updated DataFrame containing the normalized values.
-        '''
-        input=input.dropna(subset=self.channels)
-        minimum=np.argmin(input[self.channels].median().values)
-        summed=np.array(input[self.channels].median().values)
-        minimum=summed[minimum]
-        norm_factors=summed/minimum
-        input[self.channels]=input[self.channels].divide(norm_factors, axis=1)
-        print("Median normalisation done!")
-        return input
-
-    @log_func
     def protein_rollup(self, input_file, method='sum'):
         MPA=list([col for col in input_file.columns if 'Master Protein Accession' in col])[0]
         PSM_grouped=input_file.groupby(by=[MPA])
@@ -349,6 +347,30 @@ class plain_text_input:
         input[ self.channels]=input[ self.channels].divide(inject_times,axis=0)
         input[ self.channels]=input[ self.channels].multiply(1000)
         return input
+
+    @log_func
+    def filter_peptides(self, filtered_input):
+        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
+        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
+
+        # this part removes the peptides with 0 signal/noise ratio (meaning that all the channels are 0)
+        try:
+            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
+            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
+        except:
+            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
+            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
+
+        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0 but Average Reporter SN is not 0
+        # Calculate the row-wise sum for the specified columns
+        row_sums = filtered_input[self.channels].sum(axis=1)
+        # Filter out rows where the sum is zero
+        filtered_input = filtered_input[row_sums != 0]
+
+        # this part replace NaN values with 0
+        filtered_input.fillna(0, inplace=True)
+
+        return filtered_input
 
     @log_func
     def extract_heavy (self, input):

@@ -13,7 +13,13 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.6.2 (2023-11-22)
+    Current version: 2.7.0 (2023-12-05)
+
+## Changes with new version
+    Current version: 2.7.0 (2023-12-05)
+    - filter_peptides() function updated!
+    - filter_peptides() function now removes sum of intensities equal to 0
+    - filter_peptides() function now converts NaN values to 0
 
 ## Install
 
@@ -22,6 +28,19 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     pip install --upgrade git+https://github.com/science64/DynaTMT-py-SB.git
 
 ## Usage
+    Current simple order of the usage with 2.7.0 (2023-12-05):
+
+    import DynaTMT_SB.DynaTMT as mePROD
+    import pandas as pd
+    psms = pd.read_csv("20200724_SB_CCCP+ISRIB_Import_PSMs.txt", sep='\t', header=0)
+    processor = mePROD.PD_input(psms)
+    filtered_peptides = process.filter_peptides(psms)
+    ITadjusted_peptides = process.IT_adjustment(filtered_peptides)
+    sumNorm = process.total_intensity_normalisation(ITadjusted_peptides)
+    heavy = process.extract_heavy(sumNorm)
+    baselineIndex = 0 (location of the baseline channel)  
+    peptide_data = process.baseline_correction(heavy, threshold=5, i_baseline=baselineIndex, random=True)
+    protein_data = processor.protein_rollup(peptide_data, method = 'sum')
 
 ### Loading data
 

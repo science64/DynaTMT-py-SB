@@ -3,3 +3,4 @@ DynaTMT_py.egg-info/*
 dist/*
 *.xlsx
 *.txt
+*.png
