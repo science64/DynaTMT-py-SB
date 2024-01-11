@@ -1,6 +1,5 @@
 build/*
 DynaTMT_py.egg-info/*
 dist/*
-*.xlsx
-*.txt
-*.png
+.idea/*
+.ipynb_checkpoints/*
