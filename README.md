@@ -20,6 +20,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     - filter_peptides() function updated!
     - filter_peptides() function now removes sum of intensities equal to 0
     - filter_peptides() function now converts NaN values to 0
+    
     Current version: 2.8.0 (2024-01-11)
     - All the changes are done for both classes; PD_input and plain_text_input
     - filter_peptides() function updated - only works for peptide file!
@@ -37,7 +38,8 @@ The package can also be used to analyse any pSILAC/TMT dataset.
         - Then if the mean is less than threshold then that row will be removed.
         - If the file is PSMs then it will sum all the same PSMs into peptides using 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications'
         - Finally return all the input as a peptides for later usage for statistical analysis.
-    - All the availabe current function list:
+    
+    All the availabe current function list:
         - get_channels(input)
         - filter_peptides(input)
         - filter_PSMs(input)
@@ -50,6 +52,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
         - baseline_correction(input, threshold=5, i_baseline=0, random=True)
         - protein_rollup(input, method='sum') # sum, mean, median
         - log2(input)
+
 ## Install
 
     (you need to have git installed)
