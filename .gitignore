@@ -1,5 +1,8 @@
 build/*
-DynaTMT_py.egg-info/*
+DynaTMT_py_SB.egg-info/*
 dist/*
 .idea/*
 .ipynb_checkpoints/*
+DynaTMT_SB/.idea/*
+DynaTMT_SB/.ipynb_checkpoints/*
+DynaTMT_SB/__pycache__/*

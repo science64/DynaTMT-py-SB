@@ -1,7 +1,7 @@
 '''
 
     DynaTMT-py - a python package to process SILAC/TMT proteomics data
-    Copyright (C) 2021  Kevin Klann - 2023 Süleyman Bozkurt
+    Copyright (C) 2021  Kevin Klann - 2024 Süleyman Bozkurt
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.7.0"
+__version__ = "v2.9.0"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '05.12.2023'
+__update__ = '11.01.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -45,9 +45,9 @@ class PD_input:
         self.channels = self.get_channels(input)
 
     def get_channels(self, input):
-        channels = [col for col in input.columns if 'Abundance:' in col]
-        if channels == []:
-            channels = [col for col in input.columns if 'Abundance' in col]
+        # return unnormalized abundances column names (channels)
+        channels = [col for col in input.columns
+                    if 'abundance' in col.lower() and 'normaliz' not in col.lower()]
         return channels
 
     def log_func(func):  # to show (log) what function is under usage!
@@ -58,25 +58,68 @@ class PD_input:
 
     @log_func
     def filter_peptides(self, filtered_input):
+        # this part replace NaN values with 0
+        filtered_input[self.channels] = filtered_input[self.channels].fillna(0)
+
+        # remove shared peptides (peptides with more than one protein accession)
+        filtered_input = filtered_input[filtered_input['Quan Info'] != 'NotUnique']
+        # remove contaminants
+        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
+        # remove peptides with no quantification values
+        filtered_input = filtered_input[filtered_input['Quan Info'] != 'NoQuanValues']
+
+        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0
+        # Step 1: Calculate the sum of abundances across specified channels
+        filtered_input['sum_abundances'] = filtered_input[channels].sum(axis=1)
+
+        # Step 2: Filter out rows where 'sum_abundances' is zero
+        filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
+
+        # Step 3: Drop the 'sum_abundances' column
+        filtered_input.drop(columns=['sum_abundances'], inplace=True)
+
+        return filtered_input
+
+    @log_func
+    def filter_PSMs(self, filtered_input):
+        # this part replace NaN values with 0
+        filtered_input[self.channels] = filtered_input[self.channels].fillna(0)
+
+        # remove shared peptides (peptides with more than one protein accession)
         filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
+        # remove contaminants
         filtered_input = filtered_input[filtered_input['Contaminant'] == False]
 
         # this part removes the peptides with 0 signal/noise ratio (meaning that all the channels are 0)
-        try:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
-            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
-        except:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
-            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
+        # Find the column that contains 'Average Reporter' (case-insensitive)
+        avg_reporter_col = next((col for col in filtered_input.columns if 'average reporter' in col.lower()), None)
+        if avg_reporter_col:
+            # Remove peptides with 0 signal/noise ratio
+            filtered_input = filtered_input.dropna(subset=[avg_reporter_col])
+            filtered_input = filtered_input[filtered_input[avg_reporter_col] != 0]
 
-        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0 but Average Reporter SN is not 0
-        # Calculate the row-wise sum for the specified columns
-        row_sums = filtered_input[self.channels].sum(axis=1)
-        # Filter out rows where the sum is zero
-        filtered_input = filtered_input[row_sums != 0]
+        # Step 1: Calculate the sum of abundances across specified channels
+        filtered_input['sum_abundances'] = filtered_input[channels].sum(axis=1)
 
-        # this part replace NaN values with 0
-        filtered_input.fillna(0, inplace=True)
+        # Step 2: Filter out rows where 'sum_abundances' is zero
+        filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
+
+        # Step 3: Drop the 'sum_abundances' column
+        filtered_input.drop(columns=['sum_abundances'], inplace=True)
+
+        ### Apply this filter to the PSMs only ###
+        # the idea is to find isolation interference column and filter out the PSMs with isolation interference > 50%
+        isolation_interference_col = None
+        # Loop through the columns and find the one that contains 'isolation interference'
+        for col in filtered_input.columns:
+            if 'isolation interference' in col.lower():
+                isolation_interference_col = col
+                break  # Stop the loop once the column is found
+
+        # Apply the filter using the identified column name
+        if isolation_interference_col:
+            filtered_input = filtered_input[
+                filtered_input[isolation_interference_col] < 50]
 
         return filtered_input
 
@@ -90,8 +133,6 @@ class PD_input:
         inject_times=input[IT[0]]
         input[self.channels]=input[self.channels].divide(inject_times,axis=0)
         input[self.channels]=input[self.channels].multiply(1000)
-
-        print("IT adjustment done!")
         return input
 
     @log_func
@@ -106,7 +147,6 @@ class PD_input:
         minimum = summed[minimum]
         norm_factors = summed / minimum
         input_df.loc[:, self.channels] = input_df[self.channels].divide(norm_factors, axis=1)
-        print("Total intensity normalisation done!")
         return input_df
 
     @log_func
@@ -120,7 +160,6 @@ class PD_input:
         minimum=summed[minimum]
         norm_factors=summed/minimum
         input[self.channels]=input[self.channels].divide(norm_factors, axis=1)
-        print("Median normalisation done!")
         return input
 
     @log_func
@@ -148,8 +187,7 @@ class PD_input:
         modi = list([col for col in input.columns if 'Modification' in col])[0]
         '''Change Modification String here'''
         Heavy_peptides = input[input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6', na=False)]
-        print("Extraction Done","Extracted Heavy Peptides:", len(Heavy_peptides))
-
+        print("Extraction Done","Extracted Heavy PSMs/Peptides:", len(Heavy_peptides))
         return Heavy_peptides
 
     @log_func
@@ -159,97 +197,83 @@ class PD_input:
         Returns light peptide DF
         '''
         modi = list([col for col in input.columns if 'Modification' in col])[0]
-        light_peptides = input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6',na=False)]
-        print("Extraction Done","Extracted Light Peptides:", len(light_peptides))
+        light_peptides = input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6',na=False)]
+        print("Extraction Done","Extracted Light PSMs/Peptides:", len(light_peptides))
         return light_peptides
 
-    # @log_func
-    # def baseline_correction(self, input_file, random=True, threshold=5, i_baseline=0, include_negatives=False):
-    #     '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
-    #     baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
-    #
-    #     Threshold: After baseline substraction the remaining average signal has to be above threshold to be included. Parameter is set with threshold=X.
-    #     This prevents very low remaining signal peptides to produce artificially high fold changes. Has to be determined empirically.
-    #
-    #     First PSMs combined into peptides by 'Master Protein Accessions', 'Annotated Sequence', 'Modifications' and then baseline correction done, export
-    #     peptide file
-    #     '''
-    #
-    #     random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
-    #
-    #     # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
-    #     peptide = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
-    #
-    #     baseline_channel = self.channels[i_baseline]
-    #     baseline = peptide[baseline_channel]
-    #     peptide[self.channels] = peptide[self.channels].subtract(baseline, axis='index')
-    #     peptide['Mean'] = peptide[self.channels].mean(axis=1)
-    #
-    #     # !!!!! this part might change !!!!
-    #     peptide = peptide.loc[peptide['Mean'] >= threshold]  # set S/N threshold for each PSM
-    #     peptide = peptide.drop("Mean", axis=1)
-    #
-    #     if (include_negatives == False and random == False):
-    #         peptide[peptide < 0] = 0  # replace negative abundances with 0
-    #
-    #     elif (include_negatives == False and random == True):
-    #         for channel in self.channels:
-    #             peptide[channel] = np.where(peptide[channel] < 0, random_float.random_sample(size=len(peptide)),
-    #                                         peptide[channel])
-    #     else:  # for other conditions we are not doing anything.
-    #         pass
-    #
-    #     # !!!! Until this part !!!!
-    #
-    #     return peptide
-
     @log_func
-    def baseline_correction(self, input_file, random=True, threshold=5, i_baseline=0, include_negatives=False):
+    def baseline_correction(self, input_file, threshold=5, i_baseline=0, random=True):  # include_negatives=False, Because there is no use of it!
         '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
         baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
+
+        if random is True, it will replace the negative values with random values between 0 and 1.
 
         Threshold: After baseline substraction the remaining average signal has to be above threshold to be included. Parameter is set with threshold=X.
         This prevents very low remaining signal peptides to produce artificially high fold changes. Has to be determined empirically.
 
-        First PSMs combined into peptides by 'Master Protein Accessions', 'Annotated Sequence', 'Modifications' and then baseline correction done, export
-        peptide file
+        It can identify the file is PSMs or Peptides by the column name. Then it will do the baseline correction for PSMs or Peptides.
+        It will convert PSMs into Peptides by sum all the same ('Master Protein Accessions', 'Annotated Sequence', 'Modifications') at the last step.
         '''
 
-        random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
-
-        # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
-        PSMs = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
-
-        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
-        # the aim is to convert PSMs into peptide file.
-        peptide = (
-            PSMs.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
-                .agg('sum')
-                .reset_index()
-        )
+        # determine input file is peptide or PSMs
+        if 'PSMs Peptide ID' in input_file.columns:
+            decision = 'PSMs'
+        elif any('Peptide Group ID' in column for column in input_df.columns):
+            decision = 'Peptides'
+        else:
+            decision = 'Unknown'
 
         baseline_channel = self.channels[i_baseline]
-        baseline = peptide[baseline_channel]
-        peptide[self.channels] = peptide[self.channels].subtract(baseline, axis='index')
-        peptide['Mean'] = peptide[self.channels].mean(axis=1)
+        baseline = input_file[baseline_channel]
+        input_file[self.channels] = input_file[self.channels].subtract(baseline, axis='index')
 
-        # !!!!! this part might change !!!!
-        peptide = peptide.loc[peptide['Mean'] >= threshold]  # set S/N threshold for each PSM
-        peptide = peptide.drop("Mean", axis=1)
-
-        if (include_negatives == False and random == False):
-            peptide[peptide < 0] = 0  # replace negative abundances with 0
-
-        elif (include_negatives == False and random == True):
+        if random == True:
+            random_float = np.random.RandomState(69)
+            # Step 1: Replace all negative values with 0 in all channels
             for channel in self.channels:
-                peptide[channel] = np.where(peptide[channel] < 0, random_float.random_sample(size=len(peptide)),
-                                            peptide[channel])
-        else:  # for other conditions we are not doing anything.
-            pass
+                input_file[channel][input_file[channel] < 0] = 0
 
-        # !!!! Until this part !!!!
+            # then again I need to sum all the values across the channels and remove the rows where the sum is 0
+            # Step 2: Calculate the sum of values across specified channels
+            input_file['sum_abundances'] = input_file[self.channels].sum(axis=1)
 
-        return peptide
+            # Step 3: Filter out rows where 'sum_abundances' is zero
+            input_file = input_file[input_file['sum_abundances'] != 0]
+
+            # Step 4: Drop the 'sum_abundances' column
+            input_file.drop(columns=['sum_abundances'], inplace=True)
+
+            # Step 5: Assign random values between 0 and 1 to the 0 values and round to two decimal places
+            for channel in self.channels:
+                input_file[channel] = np.where(input_file[channel] <= 0,
+                                            random_float.random_sample(size=len(input_file[channel])),
+                                            input_file[channel])
+
+                # Ensure all values in the copy are rounded to two decimal places
+                input_file[channel] = np.round(input_file[channel], 2)
+
+        else:
+            # all the negative values will be replaced by 0 if not random
+            input_file[input_file < 0] = 0
+
+        # Step 1: Calculate the mean across specified channels
+        input_file['Mean'] = input_file[self.channels].mean(axis=1)
+        # Step 2: Filter the DataFrame based on the 'Mean' column with the given threshold
+        input_file = input_file.loc[input_file['Mean'] >= threshold]  # set S/N threshold for each PSM
+        # Step 3: Drop the 'Mean' column
+        input_file = input_file.drop("Mean", axis=1)
+
+        if decision == 'PSMs':
+            # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
+            # the aim is to convert PSMs into peptide file.
+
+            peptides = input_file.groupby(
+                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions', 'Theo. MH+ [Da]'])[
+                self.channels].sum().reset_index()
+        else:
+            peptides = input_file.copy()
+
+        return peptides
 
     @log_func
     def protein_rollup(self, input_file, method='sum'):
@@ -283,7 +307,6 @@ class PD_input:
                 result[group]=sums
 
         protein_df=pd.DataFrame.from_dict(result, orient='index',columns=self.channels)
-        print("Protein rollup done!")
         return protein_df
 
     @log_func
@@ -291,7 +314,6 @@ class PD_input:
         '''Modifies self.input_file and log2 transforms all TMT intensities.
         '''
         input[self.channels]=np.log2(input[self.channels])
-        print("Normalization done")
         return input
 
     @log_func
@@ -349,30 +371,6 @@ class plain_text_input:
         return input
 
     @log_func
-    def filter_peptides(self, filtered_input):
-        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
-        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
-
-        # this part removes the peptides with 0 signal/noise ratio (meaning that all the channels are 0)
-        try:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter SN'])
-            filtered_input = filtered_input[filtered_input['Average Reporter SN'] != 0]
-        except:
-            filtered_input = filtered_input.dropna(subset=['Average Reporter S/N'])
-            filtered_input = filtered_input[filtered_input['Average Reporter S/N'] != 0]
-
-        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0 but Average Reporter SN is not 0
-        # Calculate the row-wise sum for the specified columns
-        row_sums = filtered_input[self.channels].sum(axis=1)
-        # Filter out rows where the sum is zero
-        filtered_input = filtered_input[row_sums != 0]
-
-        # this part replace NaN values with 0
-        filtered_input.fillna(0, inplace=True)
-
-        return filtered_input
-
-    @log_func
     def extract_heavy (self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all heavy labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
@@ -401,54 +399,79 @@ class plain_text_input:
         return light_peptides
 
     @log_func
-    def baseline_correction(self,  input_file, random=True, threshold=5, i_baseline=0, include_negatives=False):
-        '''This function takes the self.input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
+    def baseline_correction(self, input_file, threshold=5, i_baseline=0,
+                            random=True):  # include_negatives=False, Because there is no use of it!
+        '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
         baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
+
+        if random is True, it will replace the negative values with random values between 0 and 1.
 
         Threshold: After baseline substraction the remaining average signal has to be above threshold to be included. Parameter is set with threshold=X.
         This prevents very low remaining signal peptides to produce artificially high fold changes. Has to be determined empirically.
 
-        Method: The method parameter sets the method for protein wollup quantification. Default is 'sum', which will sum all peptides for
-        the corresponding protein. Alternatives are 'median' or 'mean'. If no or invalid input is given it uses 'sum'.
-
-        Modifies self.input_file variable and returns a pandas df.
+        It can identify the file is PSMs or Peptides by the column name. Then it will do the baseline correction for PSMs or Peptides.
+        It will convert PSMs into Peptides by sum all the same ('Master Protein Accessions', 'Annotated Sequence', 'Modifications') at the last step.
         '''
 
-        random_float = np.random.RandomState(69)  # random seed for NaN, empty or 0 values.
-
-        # channels and 'Modifications', 'Master Protein Accessions', 'Annotated Sequence' are required for further analysis for baseline correction.
-        PSMs = input_file[self.channels + ['Modifications', 'Master Protein Accessions', 'Annotated Sequence']]
-
-        # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
-        # the aim is to convert PSMs into peptide file.
-        peptide = (
-            PSMs.groupby(['Master Protein Accessions', 'Annotated Sequence', 'Modifications'])[self.channels]
-                .agg('sum')
-                .reset_index()
-        )
+        # determine input file is peptide or PSMs
+        if 'PSMs Peptide ID' in input_file.columns:
+            decision = 'PSMs'
+        elif any('Peptide Group ID' in column for column in input_df.columns):
+            decision = 'Peptides'
+        else:
+            decision = 'Unknown'
 
         baseline_channel = self.channels[i_baseline]
-        baseline = peptide[baseline_channel]
-        peptide[self.channels] = peptide[self.channels].subtract(baseline, axis='index')
-        peptide['Mean'] = peptide[self.channels].mean(axis=1)
+        baseline = input_file[baseline_channel]
+        input_file[self.channels] = input_file[self.channels].subtract(baseline, axis='index')
 
-        # !!!!! this part might change !!!!
-        peptide = peptide.loc[peptide['Mean'] >= threshold]  # set S/N threshold for each PSM
-        peptide = peptide.drop("Mean", axis=1)
-
-        if (include_negatives == False and random == False):
-            peptide[peptide < 0] = 0  # replace negative abundances with 0
-
-        elif (include_negatives == False and random == True):
+        if random == True:
+            random_float = np.random.RandomState(69)
+            # Step 1: Replace all negative values with 0 in all channels
             for channel in self.channels:
-                peptide[channel] = np.where(peptide[channel] < 0, random_float.random_sample(size=len(peptide)),
-                                            peptide[channel])
-        else:  # for other conditions we are not doing anything.
-            pass
+                input_file[channel][input_file[channel] < 0] = 0
 
-        # !!!! Until this part !!!!
+            # then again I need to sum all the values across the channels and remove the rows where the sum is 0
+            # Step 2: Calculate the sum of values across specified channels
+            input_file['sum_abundances'] = input_file[self.channels].sum(axis=1)
 
-        return peptide
+            # Step 3: Filter out rows where 'sum_abundances' is zero
+            input_file = input_file[input_file['sum_abundances'] != 0]
+
+            # Step 4: Drop the 'sum_abundances' column
+            input_file.drop(columns=['sum_abundances'], inplace=True)
+
+            # Step 5: Assign random values between 0 and 1 to the 0 values and round to two decimal places
+            for channel in self.channels:
+                input_file[channel] = np.where(input_file[channel] <= 0,
+                                               random_float.random_sample(size=len(input_file[channel])),
+                                               input_file[channel])
+
+                # Ensure all values in the copy are rounded to two decimal places
+                input_file[channel] = np.round(input_file[channel], 2)
+
+        else:
+            # all the negative values will be replaced by 0 if not random
+            input_file[input_file < 0] = 0
+
+        # Step 1: Calculate the mean across specified channels
+        input_file['Mean'] = input_file[self.channels].mean(axis=1)
+        # Step 2: Filter the DataFrame based on the 'Mean' column with the given threshold
+        input_file = input_file.loc[input_file['Mean'] >= threshold]  # set S/N threshold for each PSM
+        # Step 3: Drop the 'Mean' column
+        input_file = input_file.drop("Mean", axis=1)
+
+        if decision == 'PSMs':
+            # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
+            # the aim is to convert PSMs into peptide file.
+
+            peptides = input_file.groupby(
+                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions', 'Theo. MH+ [Da]'])[
+                self.channels].sum().reset_index()
+        else:
+            peptides = input_file.copy()
+
+        return peptides
 
     @log_func
     def TMM(self, input):

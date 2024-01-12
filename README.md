@@ -13,14 +13,43 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.7.0 (2023-12-05)
+    Current version: 2.8.0 (2024-01-11)
 
 ## Changes with new version
     Current version: 2.7.0 (2023-12-05)
     - filter_peptides() function updated!
     - filter_peptides() function now removes sum of intensities equal to 0
     - filter_peptides() function now converts NaN values to 0
-
+    Current version: 2.8.0 (2024-01-11)
+    - All the changes are done for both classes; PD_input and plain_text_input
+    - filter_peptides() function updated - only works for peptide file!
+    - filter_PSMs() function added - only works for PSM file and removes isolation interference > 50%
+    - extract_heavy() and extract_light() functions updated (works for all: TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6)
+    - baseline_correction() function updated! 
+    - baseline_correction() main changes:
+        - include_negatives=False, Because there is no use of it!
+        - threshold=5, but needs to be tested and adjusted for your experiment.
+        - function can identify PSMs and Peptides files and works for both.
+        - function substrates the baseline channel from all the channels.
+        - If random is True, then the function will add random numbers from 0-1 to the negative and 0 values.
+        - If random is False, then the function will add 0 to the negative values.
+        - Then get the mean of all the values (all positive values)
+        - Then if the mean is less than threshold then that row will be removed.
+        - If the file is PSMs then it will sum all the same PSMs into peptides using 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications'
+        - Finally return all the input as a peptides for later usage for statistical analysis.
+    - All the availabe current function list:
+        - get_channels(input)
+        - filter_peptides(input)
+        - filter_PSMs(input)
+        - IT_adjustment(input)
+        - total_intensity_normalisation(input)
+        - Median_normalisation(input)
+        - TMM(input)
+        - extract_heavy(input
+        - extract_light(input)
+        - baseline_correction(input, threshold=5, i_baseline=0, random=True)
+        - protein_rollup(input, method='sum') # sum, mean, median
+        - log2(input)
 ## Install
 
     (you need to have git installed)
