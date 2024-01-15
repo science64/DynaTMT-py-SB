@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.9.0"
+__version__ = "v2.8.1"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '11.01.2024'
+__update__ = '15.01.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -70,7 +70,7 @@ class PD_input:
 
         # this part removoes whole channel sum of 0, because we remove booster and rest might be 0
         # Step 1: Calculate the sum of abundances across specified channels
-        filtered_input['sum_abundances'] = filtered_input[channels].sum(axis=1)
+        filtered_input['sum_abundances'] = filtered_input[self.channels].sum(axis=1)
 
         # Step 2: Filter out rows where 'sum_abundances' is zero
         filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
@@ -99,7 +99,7 @@ class PD_input:
             filtered_input = filtered_input[filtered_input[avg_reporter_col] != 0]
 
         # Step 1: Calculate the sum of abundances across specified channels
-        filtered_input['sum_abundances'] = filtered_input[channels].sum(axis=1)
+        filtered_input['sum_abundances'] = filtered_input[self.channels].sum(axis=1)
 
         # Step 2: Filter out rows where 'sum_abundances' is zero
         filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
