@@ -13,7 +13,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.8.0 (2024-01-11)
+    Current version: 2.8.1 (2024-01-15)
 
 ## Changes with new version
 
