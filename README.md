@@ -16,21 +16,24 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     Current version: 2.8.0 (2024-01-11)
 
 ## Changes with new version
-    Current version: 2.7.0 (2023-12-05)
+
+    ## Current version: 2.7.0 (2023-12-05)
     - filter_peptides() function updated!
     - filter_peptides() function now removes sum of intensities equal to 0
     - filter_peptides() function now converts NaN values to 0
-    
-    Current version: 2.8.0 (2024-01-11)
+
+    ## Current version: 2.8.0 (2024-01-11)
+    - The script can be used for PSMs and Peptide file for both MS2 and MS3 measurements.
     - All the changes are done for both classes; PD_input and plain_text_input
     - filter_peptides() function updated - only works for peptide file!
     - filter_PSMs() function added - only works for PSM file and removes isolation interference > 50%
     - extract_heavy() and extract_light() functions updated (works for all: TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6)
-    - baseline_correction() function updated! 
+    - baseline_correction() function updated!
     - baseline_correction() main changes:
-        - include_negatives=False, Because there is no use of it!
-        - threshold=5, but needs to be tested and adjusted for your experiment.
-        - function can identify PSMs and Peptides files and works for both.
+        - new usage: baseline_correction(input, threshold=5, i_baseline=0, random=True)
+        - include_negatives=False part removed! Because there is no use of it!
+        - threshold=5, but needs to be tested and adjusted for your experiment, could be higher than 5.
+        - This function can identify PSMs and Peptides files and works for both.
         - function substrates the baseline channel from all the channels.
         - If random is True, then the function will add random numbers from 0-1 to the negative and 0 values.
         - If random is False, then the function will add 0 to the negative values.
@@ -38,7 +41,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
         - Then if the mean is less than threshold then that row will be removed.
         - If the file is PSMs then it will sum all the same PSMs into peptides using 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications'
         - Finally return all the input as a peptides for later usage for statistical analysis.
-    
+
     All the availabe current function list:
         - get_channels(input)
         - filter_peptides(input)
@@ -60,6 +63,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     pip install --upgrade git+https://github.com/science64/DynaTMT-py-SB.git
 
 ## Usage
+
     Current simple order of the usage with 2.7.0 (2023-12-05):
 
     import DynaTMT_SB.DynaTMT as mePROD
@@ -70,7 +74,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     ITadjusted_peptides = process.IT_adjustment(filtered_peptides)
     sumNorm = process.total_intensity_normalisation(ITadjusted_peptides)
     heavy = process.extract_heavy(sumNorm)
-    baselineIndex = 0 (location of the baseline channel)  
+    baselineIndex = 0 (location of the baseline channel)
     peptide_data = process.baseline_correction(heavy, threshold=5, i_baseline=baselineIndex, random=True)
     protein_data = processor.protein_rollup(peptide_data, method = 'sum')
 
