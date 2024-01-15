@@ -19,7 +19,7 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.8.1"
+__version__ = "v2.8.2"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
@@ -203,7 +203,8 @@ class PD_input:
 
     @log_func
     def baseline_correction(self, input_file, threshold=5, i_baseline=0, random=True):  # include_negatives=False, Because there is no use of it!
-        '''This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
+        """
+        This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
         baseline column is defaulted to 0. Set i_baseline=X to change baseline column.
 
         if random is True, it will replace the negative values with random values between 0 and 1.
@@ -213,7 +214,7 @@ class PD_input:
 
         It can identify the file is PSMs or Peptides by the column name. Then it will do the baseline correction for PSMs or Peptides.
         It will convert PSMs into Peptides by sum all the same ('Master Protein Accessions', 'Annotated Sequence', 'Modifications') at the last step.
-        '''
+        """
 
         # determine input file is peptide or PSMs
         if 'PSMs Peptide ID' in input_file.columns:
@@ -243,8 +244,12 @@ class PD_input:
             # Step 4: Drop the 'sum_abundances' column
             input_file.drop(columns=['sum_abundances'], inplace=True)
 
-            # Step 5: Assign random values between 0 and 1 to the 0 values and round to two decimal places
-            for channel in self.channels:
+            # step 5: Remove baseline channel from the channels list
+            channels_final = self.channels.copy()
+            channels_final.remove(baseline_channel)
+
+            # Step 6: Assign random values between 0 and 1 to the 0 values and round to two decimal places
+            for channel in channels_final:
                 input_file[channel] = np.where(input_file[channel] <= 0,
                                             random_float.random_sample(size=len(input_file[channel])),
                                             input_file[channel])
@@ -441,8 +446,12 @@ class plain_text_input:
             # Step 4: Drop the 'sum_abundances' column
             input_file.drop(columns=['sum_abundances'], inplace=True)
 
+            # step 5: Remove baseline channel from the channels list
+            channels_final = self.channels.copy()
+            channels_final.remove(baseline_channel)
+
             # Step 5: Assign random values between 0 and 1 to the 0 values and round to two decimal places
-            for channel in self.channels:
+            for channel in channels_final:
                 input_file[channel] = np.where(input_file[channel] <= 0,
                                                random_float.random_sample(size=len(input_file[channel])),
                                                input_file[channel])
