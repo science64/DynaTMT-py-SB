@@ -2,8 +2,6 @@
 
 [![DOI](https://zenodo.org/badge/319922981.svg)](https://zenodo.org/badge/latestdoi/319922981)
 
-**To install: an open command prompt (CMD), write this code in the folder where setup.py is located 'pip install .'**
-
 **To use it in your python code: Use "from DynaTMT_SB.DynaTMT import PD_input,plain_text_input" instead of "from DynaTMT.DynaTMT import PD_input,plain_text_input"**
 
 The **DynaTMT tool** can be used to analyze **m**ultiplexed **e**nhanced **pro**tein **d**ynamic mass spectrometry (**mePROD**) data. mePROD uses pulse SILAC combined with Tandem Mass Tag (TMT) labelling to profile newly synthesized proteins. Through a booster channel, that contains a fully heavy labelled digest, the identification rate of labelled peptides is greatly enhanced, compared to other pSILAC experiments. Through the multiplexing capacity of TMT reagents it is possible during the workflow to use the boost signal as a carrier that improves survey scan intensities, but does not interfere with quantification of the pulsed samples. This workflow makes labelling times of minutes (down to 15min in the original publication) possible.
@@ -13,7 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.8.2 (2024-01-15)
+    Current version: 2.8.3 (2024-01-16)
 
 ## Changes with new version
 
@@ -22,7 +20,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     - filter_peptides() function now removes sum of intensities equal to 0
     - filter_peptides() function now converts NaN values to 0
 
-    ## Current version: 2.8.2 (2024-01-15)
+    ## Current version: 2.8.3 (2024-01-16)
     - The script can be used for PSMs and Peptide file for both MS2 and MS3 measurements.
     - All the changes are done for both classes; PD_input and plain_text_input
     - filter_peptides() function updated - only works for peptide file!
@@ -61,6 +59,10 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     (you need to have git installed)
 
     pip install --upgrade git+https://github.com/science64/DynaTMT-py-SB.git
+
+    or 
+
+    **To install: an open command prompt (CMD), write this code in the folder where setup.py is located 'pip install .'**
 
 ## Usage
 

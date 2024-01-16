@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.8.2"
+__version__ = "v2.8.3"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '15.01.2024'
+__update__ = '16.01.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -273,7 +273,7 @@ class PD_input:
             # the aim is to convert PSMs into peptide file.
 
             peptides = input_file.groupby(
-                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions', 'Theo. MH+ [Da]'])[
+                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
                 self.channels].sum().reset_index()
         else:
             peptides = input_file.copy()

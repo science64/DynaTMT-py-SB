@@ -1,7 +1,7 @@
 # __author__ = 'Kevin Klann'
 # __updated_by__ = 'Süleyman Bozkurt'
-# __version__ = '2.8.2'
-# __updated_date__ = '2024-01-15'
+# __version__ = '2.8.3'
+# __updated_date__ = '2024-01-16'
 # __description__ = 'DynaTMT - updates and fixes.'
 # __license__ = 'MIT'
 # __init__.py
