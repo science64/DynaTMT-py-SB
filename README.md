@@ -11,7 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.8.3 (2024-01-16)
+    Current version: 2.8.4 (2024-01-18)
 
 ## Changes with new version
 
@@ -20,7 +20,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     - filter_peptides() function now removes sum of intensities equal to 0
     - filter_peptides() function now converts NaN values to 0
 
-    ## Current version: 2.8.3 (2024-01-16)
+    ## Current version: 2.8.4 (2024-01-18)
     - The script can be used for PSMs and Peptide file for both MS2 and MS3 measurements.
     - All the changes are done for both classes; PD_input and plain_text_input
     - filter_peptides() function updated - only works for peptide file!

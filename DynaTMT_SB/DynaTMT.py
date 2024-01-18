@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.8.3"
+__version__ = "v2.8.4"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '16.01.2024'
+__update__ = '18.01.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -202,6 +202,11 @@ class PD_input:
         return light_peptides
 
     @log_func
+    def PSMs_to_Peptide(self):
+        pass
+
+
+    @log_func
     def baseline_correction(self, input_file, threshold=5, i_baseline=0, random=True):  # include_negatives=False, Because there is no use of it!
         """
         This function takes the input_file DataFrame and substracts the baseline/noise channel from all other samples. The index of the
@@ -254,8 +259,8 @@ class PD_input:
                                             random_float.random_sample(size=len(input_file[channel])),
                                             input_file[channel])
 
-                # Ensure all values in the copy are rounded to two decimal places
-                input_file[channel] = np.round(input_file[channel], 2)
+                # # Ensure all values in the copy are rounded to two decimal places
+                # input_file[channel] = np.round(input_file[channel], 2)
 
         else:
             # all the negative values will be replaced by 0 if not random
