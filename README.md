@@ -11,7 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.8.4 (2024-01-18)
+    Current version: 2.8.5 (2024-02-06)
 
 ## Changes with new version
 
@@ -39,6 +39,12 @@ The package can also be used to analyse any pSILAC/TMT dataset.
         - Then if the mean is less than threshold then that row will be removed.
         - If the file is PSMs then it will sum all the same PSMs into peptides using 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications'
         - Finally return all the input as a peptides for later usage for statistical analysis.
+    
+    ## Current version: 2.8.5 (2024-02-06)
+    - PSMs_to_Peptide() function is added (it is now seperate instead of in baseline correction)!
+       - either uses these columns for merging PSMs into peptides: ['Annotated Sequence', 'Modifications', 'Master Protein Accessions']
+       - or uses these columns for merging PSMs into peptides if cannot find others: ['Theo. MH+ [Da]', 'Master Protein Accessions']
+       - it can auto detect 'Theo. MH+ [Da]' column using regulare expression even though the name is not fully matching.
 
     All the availabe current function list:
         - get_channels(input)
@@ -51,6 +57,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
         - extract_heavy(input
         - extract_light(input)
         - baseline_correction(input, threshold=5, i_baseline=0, random=True)
+        - PSMs_to_Peptide(input)
         - protein_rollup(input, method='sum') # sum, mean, median
         - log2(input)
 

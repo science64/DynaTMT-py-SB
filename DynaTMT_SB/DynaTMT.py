@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.8.4"
+__version__ = "v2.8.5"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '18.01.2024'
+__update__ = '06.02.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -202,8 +202,47 @@ class PD_input:
         return light_peptides
 
     @log_func
-    def PSMs_to_Peptide(self):
-        pass
+    def PSMs_to_Peptide(self, input):
+
+        try:
+            peptides = input.groupby(
+                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
+                self.channels].sum().reset_index()
+        except:
+            import re
+            '''
+            First we need to identify the column name that contains the theoretical MH+ values. 
+            This is necessary because PSMs matches and combining them into peptides.
+            '''
+            # List of exact column names to search for
+            exact_col_names = ['Theo. MH+ [Da]', 'Theo MHplus in Da']
+
+            # Variable to hold the found column name or None if not found
+            found_col_name = None
+
+            # First, try to find an exact match from the list
+            for col in exact_col_names:
+                if col in input.columns:
+                    found_col_name = col
+                    break
+
+            # If no exact match is found, use regex to find a matching column
+            if found_col_name is None:
+                standard_col_name = 'Theo_MHplus_Da'  # This will be the new standard column name
+                for col in df.columns:
+                    if re.search(r'theo.? mh\+? \[?da\]?', col, re.IGNORECASE):
+                        df.rename(columns={col: standard_col_name}, inplace=True)
+                        found_col_name = standard_col_name
+                        break
+
+            # Now, use the found column name in your groupby if it's not None
+            if found_col_name is not None:
+                peptides = input.groupby(['Master Protein Accessions', found_col_name])[self.channels].sum().reset_index()
+            else:
+                print("The required Theo MH+ column was not found in the DataFrame.")
+
+        return peptides
+
 
 
     @log_func
@@ -221,10 +260,13 @@ class PD_input:
         It will convert PSMs into Peptides by sum all the same ('Master Protein Accessions', 'Annotated Sequence', 'Modifications') at the last step.
         """
 
+        # print('PSMs_data_1 with %s threshold: %s rows x %s columns' % (
+        # threshold, input_file.shape[0], input_file.shape[1]))
+
         # determine input file is peptide or PSMs
         if 'PSMs Peptide ID' in input_file.columns:
             decision = 'PSMs'
-        elif any('Peptide Group ID' in column for column in input_df.columns):
+        elif any('Peptide Group ID' in column for column in input_file.columns):
             decision = 'Peptides'
         else:
             decision = 'Unknown'
@@ -273,13 +315,18 @@ class PD_input:
         # Step 3: Drop the 'Mean' column
         input_file = input_file.drop("Mean", axis=1)
 
+        # print('PSMs_data_2 with %s threshold: %s rows x %s columns' % (
+        # threshold, input_file.shape[0], input_file.shape[1]))
+
         if decision == 'PSMs':
             # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
             # the aim is to convert PSMs into peptide file.
 
-            peptides = input_file.groupby(
-                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
-                self.channels].sum().reset_index()
+            # peptides = input_file.groupby(
+            #     ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
+            #     self.channels].sum().reset_index()
+            peptides = PSMs_to_Peptide(input_file)  # convert PSMs into Peptides
+
         else:
             peptides = input_file.copy()
 
@@ -426,7 +473,7 @@ class plain_text_input:
         # determine input file is peptide or PSMs
         if 'PSMs Peptide ID' in input_file.columns:
             decision = 'PSMs'
-        elif any('Peptide Group ID' in column for column in input_df.columns):
+        elif any('Peptide Group ID' in column for column in input_file.columns):
             decision = 'Peptides'
         else:
             decision = 'Unknown'
