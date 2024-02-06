@@ -240,6 +240,7 @@ class PD_input:
                 peptides = input.groupby(['Master Protein Accessions', found_col_name])[self.channels].sum().reset_index()
             else:
                 print("The required Theo MH+ column was not found in the DataFrame.")
+                return None
 
         return peptides
 
@@ -325,7 +326,7 @@ class PD_input:
             # peptides = input_file.groupby(
             #     ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
             #     self.channels].sum().reset_index()
-            peptides = PSMs_to_Peptide(input_file)  # convert PSMs into Peptides
+            peptides = self.PSMs_to_Peptide(input_file)  # convert PSMs into Peptides
 
         else:
             peptides = input_file.copy()
