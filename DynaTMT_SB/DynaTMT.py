@@ -19,17 +19,18 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.8.5"
+__version__ = "v2.9.0"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '06.02.2024'
+__update__ = '06.03.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
 import numpy as np
 from numpy.random import random
 import warnings
+import re
 warnings.filterwarnings("ignore")
 
 class PD_input:
@@ -58,54 +59,29 @@ class PD_input:
 
     @log_func
     def filter_peptides(self, filtered_input):
-        # this part replace NaN values with 0
-        filtered_input[self.channels] = filtered_input[self.channels].fillna(0)
+        # Remove rows where any of the specified 'channels' columns have at least one NA value
+        filtered_input = filtered_input.dropna(subset=self.channels)
 
         # remove shared peptides (peptides with more than one protein accession)
         filtered_input = filtered_input[filtered_input['Quan Info'] != 'NotUnique']
         # remove contaminants
         filtered_input = filtered_input[filtered_input['Contaminant'] == False]
-        # remove peptides with no quantification values
-        filtered_input = filtered_input[filtered_input['Quan Info'] != 'NoQuanValues']
-
-        # this part removoes whole channel sum of 0, because we remove booster and rest might be 0
-        # Step 1: Calculate the sum of abundances across specified channels
-        filtered_input['sum_abundances'] = filtered_input[self.channels].sum(axis=1)
-
-        # Step 2: Filter out rows where 'sum_abundances' is zero
-        filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
-
-        # Step 3: Drop the 'sum_abundances' column
-        filtered_input.drop(columns=['sum_abundances'], inplace=True)
 
         return filtered_input
 
     @log_func
     def filter_PSMs(self, filtered_input):
-        # this part replace NaN values with 0
-        filtered_input[self.channels] = filtered_input[self.channels].fillna(0)
+        # Remove rows where any of the specified 'channels' columns have at least one NA value
+        filtered_input = filtered_input.dropna(subset=self.channels)
 
         # remove shared peptides (peptides with more than one protein accession)
-        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';',na=False)]
+        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';', na = False)]
+
+        # remove empty accessions (if any)
+        filtered_input = filtered_input.dropna(subset=['Master Protein Accessions'])
+
         # remove contaminants
         filtered_input = filtered_input[filtered_input['Contaminant'] == False]
-
-        # this part removes the peptides with 0 signal/noise ratio (meaning that all the channels are 0)
-        # Find the column that contains 'Average Reporter' (case-insensitive)
-        avg_reporter_col = next((col for col in filtered_input.columns if 'average reporter' in col.lower()), None)
-        if avg_reporter_col:
-            # Remove peptides with 0 signal/noise ratio
-            filtered_input = filtered_input.dropna(subset=[avg_reporter_col])
-            filtered_input = filtered_input[filtered_input[avg_reporter_col] != 0]
-
-        # Step 1: Calculate the sum of abundances across specified channels
-        filtered_input['sum_abundances'] = filtered_input[self.channels].sum(axis=1)
-
-        # Step 2: Filter out rows where 'sum_abundances' is zero
-        filtered_input = filtered_input[filtered_input['sum_abundances'] != 0]
-
-        # Step 3: Drop the 'sum_abundances' column
-        filtered_input.drop(columns=['sum_abundances'], inplace=True)
 
         ### Apply this filter to the PSMs only ###
         # the idea is to find isolation interference column and filter out the PSMs with isolation interference > 50%
@@ -131,7 +107,7 @@ class PD_input:
         '''
         IT=[col for col in input.columns if 'Ion Inject Time' in col]
         inject_times=input[IT[0]]
-        input[self.channels]=input[self.channels].divide(inject_times,axis=0)
+        input[self.channels]=input[self.channels].divide(inject_times, axis=0)
         input[self.channels]=input[self.channels].multiply(1000)
         return input
 
@@ -203,13 +179,18 @@ class PD_input:
 
     @log_func
     def PSMs_to_Peptide(self, input):
+        '''This function takes PSMs as the input file and groups the PSMs into peptides by the
+        Annotated sequence, Modifications and Master Protein Accessions. It then aggregates the TMT channels.
+        It then finally returns a DataFrame containing the peptide sequences, modifications, accession ID
+        and the aggregated TMT channels.
+        '''
 
         try:
             peptides = input.groupby(
                 ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
                 self.channels].sum().reset_index()
         except:
-            import re
+            # if the dataframe does not contain the required columns, we need to find the column that contains the theoretical MH+ values
             '''
             First we need to identify the column name that contains the theoretical MH+ values. 
             This is necessary because PSMs matches and combining them into peptides.
@@ -229,9 +210,9 @@ class PD_input:
             # If no exact match is found, use regex to find a matching column
             if found_col_name is None:
                 standard_col_name = 'Theo_MHplus_Da'  # This will be the new standard column name
-                for col in df.columns:
+                for col in input.columns:
                     if re.search(r'theo.? mh\+? \[?da\]?', col, re.IGNORECASE):
-                        df.rename(columns={col: standard_col_name}, inplace=True)
+                        input.rename(columns={col: standard_col_name}, inplace=True)
                         found_col_name = standard_col_name
                         break
 
@@ -243,8 +224,6 @@ class PD_input:
                 return None
 
         return peptides
-
-
 
     @log_func
     def baseline_correction(self, input_file, threshold=5, i_baseline=0, random=True):  # include_negatives=False, Because there is no use of it!
@@ -261,9 +240,6 @@ class PD_input:
         It will convert PSMs into Peptides by sum all the same ('Master Protein Accessions', 'Annotated Sequence', 'Modifications') at the last step.
         """
 
-        # print('PSMs_data_1 with %s threshold: %s rows x %s columns' % (
-        # threshold, input_file.shape[0], input_file.shape[1]))
-
         # determine input file is peptide or PSMs
         if 'PSMs Peptide ID' in input_file.columns:
             decision = 'PSMs'
@@ -271,6 +247,8 @@ class PD_input:
             decision = 'Peptides'
         else:
             decision = 'Unknown'
+
+        print('[#] Decision of this file is:', decision)
 
         baseline_channel = self.channels[i_baseline]
         baseline = input_file[baseline_channel]
@@ -323,11 +301,7 @@ class PD_input:
             # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
             # the aim is to convert PSMs into peptide file.
 
-            # peptides = input_file.groupby(
-            #     ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
-            #     self.channels].sum().reset_index()
             peptides = self.PSMs_to_Peptide(input_file)  # convert PSMs into Peptides
-
         else:
             peptides = input_file.copy()
 
@@ -429,7 +403,7 @@ class plain_text_input:
         return input
 
     @log_func
-    def extract_heavy (self, input):
+    def extract_heavy(self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all heavy labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
         Returns heavy peptide DF
@@ -440,7 +414,7 @@ class plain_text_input:
         return Heavy_peptides
 
     @log_func
-    def extract_light (self, input):
+    def extract_light(self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all light labelled peptides. Naming of the 
         Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
 
@@ -455,6 +429,53 @@ class plain_text_input:
         print("Extraction Done","Extracted Heavy Peptides:", len(light_peptides))
         
         return light_peptides
+
+    def PSMs_to_Peptide(self, input):
+        '''This function takes PSMs as the input file and groups the PSMs into peptides by the
+        Annotated sequence, Modifications and Master Protein Accessions. It then aggregates the TMT channels.
+        It then finally returns a DataFrame containing the peptide sequences, modifications, accession ID
+        and the aggregated TMT channels.
+        '''
+
+        try:
+            peptides = input.groupby(
+                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions'])[
+                self.channels].sum().reset_index()
+        except:
+            # if the dataframe does not contain the required columns, we need to find the column that contains the theoretical MH+ values
+            '''
+            First we need to identify the column name that contains the theoretical MH+ values. 
+            This is necessary because PSMs matches and combining them into peptides.
+            '''
+            # List of exact column names to search for
+            exact_col_names = ['Theo. MH+ [Da]', 'Theo MHplus in Da']
+
+            # Variable to hold the found column name or None if not found
+            found_col_name = None
+
+            # First, try to find an exact match from the list
+            for col in exact_col_names:
+                if col in input.columns:
+                    found_col_name = col
+                    break
+
+            # If no exact match is found, use regex to find a matching column
+            if found_col_name is None:
+                standard_col_name = 'Theo_MHplus_Da'  # This will be the new standard column name
+                for col in input.columns:
+                    if re.search(r'theo.? mh\+? \[?da\]?', col, re.IGNORECASE):
+                        input.rename(columns={col: standard_col_name}, inplace=True)
+                        found_col_name = standard_col_name
+                        break
+
+            # Now, use the found column name in your groupby if it's not None
+            if found_col_name is not None:
+                peptides = input.groupby(['Master Protein Accessions', found_col_name])[self.channels].sum().reset_index()
+            else:
+                print("The required Theo MH+ column was not found in the DataFrame.")
+                return None
+
+        return peptides
 
     @log_func
     def baseline_correction(self, input_file, threshold=5, i_baseline=0,
@@ -478,6 +499,8 @@ class plain_text_input:
             decision = 'Peptides'
         else:
             decision = 'Unknown'
+
+        print('[#] Decision of this file is:', decision)
 
         baseline_channel = self.channels[i_baseline]
         baseline = input_file[baseline_channel]
@@ -526,10 +549,7 @@ class plain_text_input:
         if decision == 'PSMs':
             # Group by 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications' and aggregate the sum for each abundance column
             # the aim is to convert PSMs into peptide file.
-
-            peptides = input_file.groupby(
-                ['Annotated Sequence', 'Modifications', 'Master Protein Accessions', 'Theo. MH+ [Da]'])[
-                self.channels].sum().reset_index()
+            peptides = self.PSMs_to_Peptide(input_file)  # convert PSMs into Peptides
         else:
             peptides = input_file.copy()
 

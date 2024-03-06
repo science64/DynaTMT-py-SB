@@ -11,7 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.8.5 (2024-02-06)
+    Current version: 2.9.0 (2024-03-06)
 
 ## Changes with new version
 
@@ -46,20 +46,21 @@ The package can also be used to analyse any pSILAC/TMT dataset.
        - or uses these columns for merging PSMs into peptides if cannot find others: ['Theo. MH+ [Da]', 'Master Protein Accessions']
        - it can auto detect 'Theo. MH+ [Da]' column using regulare expression even though the name is not fully matching.
 
-    All the availabe current function list:
-        - get_channels(input)
-        - filter_peptides(input)
-        - filter_PSMs(input)
-        - IT_adjustment(input)
-        - total_intensity_normalisation(input)
-        - Median_normalisation(input)
-        - TMM(input)
-        - extract_heavy(input
-        - extract_light(input)
-        - baseline_correction(input, threshold=5, i_baseline=0, random=True)
-        - PSMs_to_Peptide(input)
-        - protein_rollup(input, method='sum') # sum, mean, median
-        - log2(input)
+    ## Current version: 2.9.0 (2024-03-06)
+    - filter_PSMs() and filter_peptides() functions are updated!
+        Updates in filter_PSM:
+        if any;
+          - remove any TMT channels have at least one NA value (around 5-10% it is account for).
+          - NA or empty Master Protein Accessions are also removed,
+          - Average reporter = 0 filtering is removed because, the data is already higher quality (nothing changes).
+          - sum_abundances = 0 filtering is removed as well the data is already higher quality (nothing changes).
+          - isolation interference > 50% filtering continues to be used.
+          - rest is the same as before.
+        Updates in filter_peptides:
+        if any;
+          - remove any TMT channels have at least one NA value (around 5-10% it is account for)
+          - rest is the same as before.
+
 
 ## Install
 
@@ -70,6 +71,22 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     or 
 
     **To install: an open command prompt (CMD), write this code in the folder where setup.py is located 'pip install .'**
+
+## Functions in the Class
+      All the availabe current function list:
+          - get_channels(input)
+          - filter_peptides(input)
+          - filter_PSMs(input)
+          - IT_adjustment(input)
+          - total_intensity_normalisation(input)
+          - Median_normalisation(input)
+          - TMM(input)
+          - extract_heavy(input
+          - extract_light(input)
+          - baseline_correction(input, threshold=5, i_baseline=0, random=True)
+          - PSMs_to_Peptide(input)
+          - protein_rollup(input, method='sum') # sum, mean, median
+          - log2(input)
 
 ## Usage
 
