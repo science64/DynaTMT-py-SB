@@ -19,7 +19,7 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.9.0"
+__version__ = "v2.9.1"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
@@ -59,29 +59,19 @@ class PD_input:
 
     @log_func
     def filter_peptides(self, filtered_input):
-        # Remove rows where any of the specified 'channels' columns have at least one NA value
-        filtered_input = filtered_input.dropna(subset=self.channels)
 
         # remove shared peptides (peptides with more than one protein accession)
         filtered_input = filtered_input[filtered_input['Quan Info'] != 'NotUnique']
         # remove contaminants
         filtered_input = filtered_input[filtered_input['Contaminant'] == False]
 
+        # Remove rows where any of the specified 'channels' columns have at least one NA value
+        filtered_input = filtered_input.dropna(subset=self.channels)
+
         return filtered_input
 
     @log_func
     def filter_PSMs(self, filtered_input):
-        # Remove rows where any of the specified 'channels' columns have at least one NA value
-        filtered_input = filtered_input.dropna(subset=self.channels)
-
-        # remove shared peptides (peptides with more than one protein accession)
-        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';', na = False)]
-
-        # remove empty accessions (if any)
-        filtered_input = filtered_input.dropna(subset=['Master Protein Accessions'])
-
-        # remove contaminants
-        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
 
         ### Apply this filter to the PSMs only ###
         # the idea is to find isolation interference column and filter out the PSMs with isolation interference > 50%
@@ -96,6 +86,18 @@ class PD_input:
         if isolation_interference_col:
             filtered_input = filtered_input[
                 filtered_input[isolation_interference_col] < 50]
+
+        # remove shared peptides (peptides with more than one protein accession)
+        filtered_input = filtered_input[~filtered_input['Master Protein Accessions'].str.contains(';', na = False)]
+
+        # remove empty accessions (if any)
+        filtered_input = filtered_input.dropna(subset=['Master Protein Accessions'])
+
+        # remove contaminants
+        filtered_input = filtered_input[filtered_input['Contaminant'] == False]
+
+        # Remove rows where any of the specified 'channels' columns have at least one NA value
+        filtered_input = filtered_input.dropna(subset=self.channels)
 
         return filtered_input
 

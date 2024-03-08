@@ -11,7 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.9.0 (2024-03-06)
+    Current version: 2.9.1 (2024-03-08)
 
 ## Changes with new version
 
@@ -50,7 +50,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
     - filter_PSMs() and filter_peptides() functions are updated!
         Updates in filter_PSM:
         if any;
-          - remove any TMT channels have at least one NA value (around 5-10% it is account for).
+          - remove any TMT channels have at least one NA value.
           - NA or empty Master Protein Accessions are also removed,
           - Average reporter = 0 filtering is removed because, the data is already higher quality (nothing changes).
           - sum_abundances = 0 filtering is removed as well the data is already higher quality (nothing changes).
@@ -58,9 +58,15 @@ The package can also be used to analyse any pSILAC/TMT dataset.
           - rest is the same as before.
         Updates in filter_peptides:
         if any;
-          - remove any TMT channels have at least one NA value (around 5-10% it is account for)
+          - remove any TMT channels have at least one NA value.
           - rest is the same as before.
 
+    ## Current version: 2.9.1 (2024-03-08)
+    - filter_PSMs() and filter_peptides() functions are updated!
+        Updates in filter_PSM:
+          - order of filtereing changed, remove any TMT channels have at least one NA value is done at the end.
+        Updates in filter_peptides:
+          - order of filtereing changed, remove any TMT channels have at least one NA value is done at the end.
 
 ## Install
 
