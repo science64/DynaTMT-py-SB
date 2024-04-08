@@ -11,62 +11,7 @@ The package can also be used to analyse any pSILAC/TMT dataset.
 
 ## Version
 
-    Current version: 2.9.1 (2024-03-08)
-
-## Changes with new version
-
-    ## Current version: 2.7.0 (2023-12-05)
-    - filter_peptides() function updated!
-    - filter_peptides() function now removes sum of intensities equal to 0
-    - filter_peptides() function now converts NaN values to 0
-
-    ## Current version: 2.8.4 (2024-01-18)
-    - The script can be used for PSMs and Peptide file for both MS2 and MS3 measurements.
-    - All the changes are done for both classes; PD_input and plain_text_input
-    - filter_peptides() function updated - only works for peptide file!
-    - filter_PSMs() function added - only works for PSM file and removes isolation interference > 50%
-    - extract_heavy() and extract_light() functions updated (works for all: TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6)
-    - baseline_correction() function updated!
-    - baseline_correction() main changes:
-        - new usage: baseline_correction(input, threshold=5, i_baseline=0, random=True)
-        - include_negatives=False part removed! Because there is no use of it!
-        - threshold=5, but needs to be tested and adjusted for your experiment, could be higher than 5.
-        - This function can identify PSMs and Peptides files and works for both.
-        - function substrates the baseline channel from all the channels.
-        - If random is True, then the function will add random numbers from 0-1 to the negative and 0 values.
-        - If random is False, then the function will add 0 to the negative values.
-        - Then get the mean of all the values (all positive values)
-        - Then if the mean is less than threshold then that row will be removed.
-        - If the file is PSMs then it will sum all the same PSMs into peptides using 'Annotated Sequence' and 'Master Protein Accessions', 'Modifications'
-        - Finally return all the input as a peptides for later usage for statistical analysis.
-    
-    ## Current version: 2.8.5 (2024-02-06)
-    - PSMs_to_Peptide() function is added (it is now seperate instead of in baseline correction)!
-       - either uses these columns for merging PSMs into peptides: ['Annotated Sequence', 'Modifications', 'Master Protein Accessions']
-       - or uses these columns for merging PSMs into peptides if cannot find others: ['Theo. MH+ [Da]', 'Master Protein Accessions']
-       - it can auto detect 'Theo. MH+ [Da]' column using regulare expression even though the name is not fully matching.
-
-    ## Current version: 2.9.0 (2024-03-06)
-    - filter_PSMs() and filter_peptides() functions are updated!
-        Updates in filter_PSM:
-        if any;
-          - remove any TMT channels have at least one NA value.
-          - NA or empty Master Protein Accessions are also removed,
-          - Average reporter = 0 filtering is removed because, the data is already higher quality (nothing changes).
-          - sum_abundances = 0 filtering is removed as well the data is already higher quality (nothing changes).
-          - isolation interference > 50% filtering continues to be used.
-          - rest is the same as before.
-        Updates in filter_peptides:
-        if any;
-          - remove any TMT channels have at least one NA value.
-          - rest is the same as before.
-
-    ## Current version: 2.9.1 (2024-03-08)
-    - filter_PSMs() and filter_peptides() functions are updated!
-        Updates in filter_PSM:
-          - order of filtereing changed, remove any TMT channels have at least one NA value is done at the end.
-        Updates in filter_peptides:
-          - order of filtereing changed, remove any TMT channels have at least one NA value is done at the end.
+Current version: 2.9.1 (2024-03-08). See the [CHANGELOG](CHANGELOG.md) for details on what has changed.
 
 ## Install
 
