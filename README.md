@@ -23,6 +23,10 @@ Current version: 2.9.1 (2024-03-08). See the [CHANGELOG](CHANGELOG.md) for detai
 
     **To install: an open command prompt (CMD), write this code in the folder where setup.py is located 'pip install .'**
 
+## Documentation
+
+For more detailed information about the project, including installation instructions, usage guides, and API documentation, please visit our [GitHub Wiki](https://github.com/science64/DynaTMT-py-SB/wiki).
+
 ## Functions in the Class
       All the availabe current function list:
           - get_channels(input)

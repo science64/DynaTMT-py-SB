@@ -5,11 +5,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="DynaTMT-py-SB", 
-    version="2.9.1",
+    version="2.9.2",
     author="Kevin Klann",
     author_email="klann@em.uni-frankfurt.de",
     # Updated by = "Süleyman Bozkurt",
-    # Updated date = '08/03/2024'
+    # Updated date = '03/06/2024'
     description="Python package to analyse pSILAC TMT data",
     long_description=long_description,
     long_description_content_type="text/markdown",

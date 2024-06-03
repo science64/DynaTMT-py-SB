@@ -19,11 +19,11 @@
 '''
 
 __author__ = "Kevin Klann - Süleyman Bozkurt"
-__version__ = "v2.9.1"
+__version__ = "v2.9.2"
 __maintainer__ = "Süleyman Bozkurt"
 __email__ = "sbozkurt.mbg@gmail.com"
 __date__ = '18.01.2021'
-__update__ = '06.03.2024'
+__update__ = '03.06.2024'
 
 from scipy.stats import trim_mean
 import pandas as pd
@@ -103,7 +103,9 @@ class PD_input:
 
     @log_func
     def IT_adjustment(self, input):
-        '''This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
+        '''
+        This function is only important for MS2 measuments if needed. (OPTIONAL)
+        This function adjusts the input DataFrame stored in the class variable self.input_file for Ion injection times.
         Abundance channels should contain "Abundance:" string and injection time uses "Ion Inject Time" as used by ProteomeDiscoverer
         default output. For other column headers please refer to plain_text_input class.
         '''
@@ -157,10 +159,12 @@ class PD_input:
         return input
 
     @log_func
-    def extract_heavy (self, input):
+    def extract_heavy(self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all heavy labelled peptides. Naming of the 
-        Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
-        Returns heavy peptide DF
+            Modifications: Heavy Arginine should contain: Label
+                           Heavy Lysine should contain: TMTK4, TMTK6, TMTK8, TMTproK4, TMTproK6, TMTproK8.
+                           Strings for modifications can be edited below for customisation.
+            Returns heavy peptide DF
         '''
         modi = list([col for col in input.columns if 'Modification' in col])[0]
         '''Change Modification String here'''
@@ -169,10 +173,12 @@ class PD_input:
         return Heavy_peptides
 
     @log_func
-    def extract_light (self, input):
+    def extract_light(self, input):
         '''This function takes the class variable self.input_file dataframe and extracts all light labelled peptides. Naming of the 
-        Modifications: Arg10: should contain Label, TMTK8, TMTproK8. Strings for modifications can be edited below for customisation.
-        Returns light peptide DF
+            Modifications: Light Arginine should NOT contain: Label
+                           Light Lysine should NOT contain: TMTK4, TMTK6, TMTK8, TMTproK4, TMTproK6, TMTproK8.
+                           Strings for modifications can be edited below for customisation.
+            Returns light peptide DF
         '''
         modi = list([col for col in input.columns if 'Modification' in col])[0]
         light_peptides = input[~input[modi].str.contains('TMTK8|Label|TMTproK8|TMTK4|TMTK6|TMTproK4|TMTproK6',na=False)]
@@ -181,10 +187,13 @@ class PD_input:
 
     @log_func
     def PSMs_to_Peptide(self, input):
-        '''This function takes PSMs as the input file and groups the PSMs into peptides by the
+        '''
+        - This function takes PSMs as the input file and groups the PSMs into peptides by the
         Annotated sequence, Modifications and Master Protein Accessions. It then aggregates the TMT channels.
-        It then finally returns a DataFrame containing the peptide sequences, modifications, accession ID
-        and the aggregated TMT channels.
+        Finally, it returns a DataFrame containing the peptide sequences, modifications, accession ID
+        and the aggregated TMT channels from peptides.
+
+        - If the required columns are not found, the function will try to find the column that contains the theoretical MH+ values.
         '''
 
         try:
@@ -287,7 +296,8 @@ class PD_input:
 
         else:
             # all the negative values will be replaced by 0 if not random
-            input_file[input_file < 0] = 0
+            for channel in self.channels:
+                input_file[channel][input_file[channel] < 0] = 0
 
         # Step 1: Calculate the mean across specified channels
         input_file['Mean'] = input_file[self.channels].mean(axis=1)
@@ -539,7 +549,8 @@ class plain_text_input:
 
         else:
             # all the negative values will be replaced by 0 if not random
-            input_file[input_file < 0] = 0
+            for channel in self.channels:
+                input_file[channel][input_file[channel] < 0] = 0
 
         # Step 1: Calculate the mean across specified channels
         input_file['Mean'] = input_file[self.channels].mean(axis=1)
