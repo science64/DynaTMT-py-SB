@@ -1,7 +1,5 @@
 # DynaTMT
 
-[![DOI](https://zenodo.org/badge/319922981.svg)](https://zenodo.org/badge/latestdoi/319922981)
-
 The **DynaTMT tool** can be used to analyze **m**ultiplexed **e**nhanced **pro**tein **d**ynamic mass spectrometry (**mePROD**) data, as well as **mePRODmt** (mitochondrial protein import proteomics) data. mePROD uses pulse SILAC combined with Tandem Mass Tag (TMT) labelling to profile newly synthesized proteins. Through a booster channel, that contains a fully heavy labelled digest, the identification rate of labelled peptides is greatly enhanced, compared to other pSILAC experiments. Through the multiplexing capacity of TMT reagents it is possible during the workflow to use the boost signal as a carrier that improves survey scan intensities, but does not interfere with quantification of the pulsed samples. This workflow makes labelling times of minutes (down to 15min in the original publication) possible.
 
 **mePRODmt** extends this approach to specifically quantify mitochondrial protein import dynamics, allowing researchers to measure the rate of protein translocation into mitochondria under various conditions.
